@@ -19,12 +19,30 @@ export class CdnService {
 
   // Fetchs the link to a file. If it's self hosted, the
   // self hosted URL is converted into an actual link.
-  getFileLink(filePath: string | undefined | null) {
-    if (!filePath) return '';
-    if (this.isSelfHostedFile(filePath)) {
-      return this.getSelfHostedFileLink(filePath);
-    }
-    return filePath;
+  getFileLink(
+    filePath: string | undefined | null,
+    options?: {
+      width: number;
+      height: number;
+    },
+  ) {
+    let url = '';
+    if (!filePath) url = '';
+    else if (this.isSelfHostedFile(filePath)) url = this.getSelfHostedFileLink(filePath);
+
+    if (options)
+      url =
+        this.serverConfig.httpsPrefix +
+        this.serverConfig.backendDomain +
+        this.serverConfig.dynamicCdnRelativePath +
+        '?' +
+        new URLSearchParams({
+          src: url,
+          width: options.width.toString(),
+          height: options.height.toString(),
+        }).toString();
+
+    return url;
   }
 
   getSelfHostedFileLink(selfHostedFilePath: string) {

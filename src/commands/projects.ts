@@ -84,8 +84,18 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
               ? [{ name: 'Completed At', value: new Date(project.completedAt).toLocaleString(), inline: true }]
               : []),
           ])
-          .setThumbnail(context.cdn.getFileLink(project.cardImageLink))
-          .setImage(context.cdn.getFileLink(project.cardImageLink))
+          .setThumbnail(
+            context.cdn.getFileLink(project.cardImageLink, {
+              width: 128,
+              height: 128,
+            }),
+          )
+          .setImage(
+            context.cdn.getFileLink(project.bannerLink, {
+              width: 256,
+              height: 456,
+            }),
+          )
           .setAuthor({ name: owner?.user.username ?? '', iconURL: context.cdn.getFileLink(owner?.user.avatarLink) }),
       ],
     });
