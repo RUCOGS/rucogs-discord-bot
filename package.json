@@ -21,6 +21,7 @@
     "deep-equal": "^2.0.5",
     "discord.js": "^13.8.1",
     "glob": "^8.0.3",
+    "got-cjs": "^12.0.1",
     "graphql": "^16.5.0",
     "graphql-subscriptions": "^2.0.0",
     "graphql-upload": "^15.0.1",

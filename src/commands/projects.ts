@@ -4,7 +4,8 @@ import { Command, CommandContext } from '@src/classes/command';
 import { defaultEmbed } from '@src/classes/utils';
 import { RoleCode } from '@src/generated/graphql-endpoint.types';
 import { ProjectFilterInput } from '@src/generated/model.types';
-import { CommandInteraction } from 'discord.js';
+import { CommandInteraction, MessageAttachment } from 'discord.js';
+import { got } from 'got-cjs';
 
 async function search(interaction: CommandInteraction, context: CommandContext) {
   const result = await context.backend.withAuth().query<{
@@ -68,6 +69,30 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
   if (project !== undefined) {
     const owner = project.members.find((x) => x.roles.some((x) => x.roleCode === RoleCode.ProjectOwner));
 
+    const files: MessageAttachment[] = [];
+
+    if (project.cardImageLink) {
+      const thumbnailResult = await got(
+        context.cdn.getFileLink(project.cardImageLink, {
+          width: 128,
+          height: 128,
+        }),
+        { responseType: 'buffer' },
+      );
+      files.push(new MessageAttachment(thumbnailResult.body, 'thumbnail.png'));
+    }
+
+    if (project.bannerLink) {
+      const imageResult = await got(
+        context.cdn.getFileLink(project.bannerLink, {
+          width: 456,
+          height: 256,
+        }),
+        { responseType: 'buffer' },
+      );
+      files.push(new MessageAttachment(imageResult.body, 'image.png'));
+    }
+
     await interaction.reply({
       embeds: [
         defaultEmbed()
@@ -84,26 +109,11 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
               ? [{ name: 'Completed At', value: new Date(project.completedAt).toLocaleString(), inline: true }]
               : []),
           ])
-          .setThumbnail('attachment://thumbnail')
-          .setImage('attachment://image')
+          .setThumbnail('attachment://thumbnail.png')
+          .setImage('attachment://image.png')
           .setAuthor({ name: owner?.user.username ?? '', iconURL: context.cdn.getFileLink(owner?.user.avatarLink) }),
       ],
-      files: [
-        {
-          name: 'thumbnail',
-          attachment: context.cdn.getFileLink(project.cardImageLink, {
-            width: 128,
-            height: 128,
-          }),
-        },
-        {
-          name: 'image',
-          attachment: context.cdn.getFileLink(project.bannerLink, {
-            width: 256,
-            height: 456,
-          }),
-        },
-      ],
+      files,
     });
   } else {
     await interaction.reply({

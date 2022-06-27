@@ -32,8 +32,8 @@ export class CdnService {
 
     if (options)
       url =
-        this.serverConfig.httpsPrefix +
-        this.serverConfig.backendDomain +
+        this.serverConfig.cdnHttpsPrefix +
+        this.serverConfig.cdnDomain +
         this.serverConfig.dynamicCdnRelativePath +
         '?' +
         new URLSearchParams({
@@ -48,7 +48,7 @@ export class CdnService {
   getSelfHostedFileLink(selfHostedFilePath: string) {
     const relativePath = this.selfHostedToRelativeFilePath(selfHostedFilePath);
     return (
-      this.serverConfig.httpsPrefix +
+      this.serverConfig.cdnHttpsPrefix +
       this.serverConfig.cdnDomain +
       this.serverConfig.cdnRelativePath +
       '/' +
