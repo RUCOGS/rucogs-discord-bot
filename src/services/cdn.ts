@@ -31,7 +31,7 @@ export class CdnService {
     const relativePath = this.selfHostedToRelativeFilePath(selfHostedFilePath);
     return (
       this.serverConfig.httpsPrefix +
-      this.serverConfig.backendDomain +
+      this.serverConfig.cdnDomain +
       this.serverConfig.cdnRelativePath +
       '/' +
       relativePath
