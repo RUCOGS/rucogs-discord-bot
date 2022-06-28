@@ -2,33 +2,28 @@ import { gql } from '@apollo/client/core';
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Command, CommandContext } from '@src/classes/command';
 import { defaultEmbed } from '@src/classes/utils';
-import { RoleCode } from '@src/generated/graphql-endpoint.types';
+import { Access, Project, RoleCode } from '@src/generated/graphql-endpoint.types';
 import { ProjectFilterInput } from '@src/generated/model.types';
 import { CommandInteraction, MessageAttachment } from 'discord.js';
 import { got } from 'got-cjs';
+import { PartialDeep } from 'type-fest';
+
+function getAccessString(access: Access) {
+  switch (access) {
+    case Access.Closed:
+      return '❌ Closed';
+    case Access.Invite:
+      return '✉️ Invite';
+    case Access.Open:
+      return '✅ Open';
+    default:
+      return 'Unknown';
+  }
+}
 
 async function search(interaction: CommandInteraction, context: CommandContext) {
   const result = await context.backend.withAuth().query<{
-    projects: {
-      id: string;
-      name: string;
-      pitch: string;
-      description: string;
-      cardImageLink: string;
-      bannerLink: string;
-      createdAt: number;
-      updatedAt: number;
-      completedAt: number;
-      members: {
-        user: {
-          username: string;
-          avatarLink: string;
-        };
-        roles: {
-          roleCode: RoleCode;
-        }[];
-      }[];
-    }[];
+    projects: PartialDeep<Project>[];
   }>({
     query: gql`
       query DiscordBotSearchProject($filter: ProjectFilterInput!) {
@@ -42,10 +37,12 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
           createdAt
           updatedAt
           completedAt
+          access
+          tags
           members {
             user {
+              displayName
               username
-              avatarLink
             }
             roles {
               roleCode
@@ -67,7 +64,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
   const project = result.data.projects[0];
 
   if (project !== undefined) {
-    const owner = project.members.find((x) => x.roles.some((x) => x.roleCode === RoleCode.ProjectOwner));
+    const owner = project.members?.find((x) => x?.roles?.some((x) => x?.roleCode === RoleCode.ProjectOwner));
 
     const files: MessageAttachment[] = [];
 
@@ -93,25 +90,36 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
       files.push(new MessageAttachment(imageResult.body, 'image.png'));
     }
 
+    let membersListString = '';
+    for (const member of project.members ?? []) {
+      membersListString += `[${member?.user?.displayName} @${member?.user?.username}](https://cogs.club/members/${member?.user?.username})`;
+      if (member?.roles?.some((x) => x?.roleCode === RoleCode.ProjectOwner)) membersListString += ' 👑';
+      membersListString += '\n';
+    }
+
     await interaction.reply({
       embeds: [
         defaultEmbed()
-          .setTitle(project.name)
+          .setTitle(project.name!)
           .addFields([
-            { name: 'Pitch', value: project.pitch },
+            { name: 'Pitch', value: project.pitch ?? '' },
             ...(project.description ? [{ name: 'Description', value: project.description.substring(0, 1024) }] : []),
-            { name: 'ID', value: project.id },
-          ])
-          .addFields([
+            { name: 'ID', value: project.id ?? '' },
+            { name: 'Tags', value: project.tags?.join(', ') ?? '' },
+            { name: 'Access', value: getAccessString(project.access ?? Access.Open), inline: true },
+            { name: 'Link', value: `[Click Here](https://cogs.club/projects/${project.id})`, inline: true },
             { name: 'Created At', value: new Date(project.createdAt).toLocaleString(), inline: true },
             { name: 'Updated At', value: new Date(project.updatedAt).toLocaleString(), inline: true },
             ...(project.completedAt
               ? [{ name: 'Completed At', value: new Date(project.completedAt).toLocaleString(), inline: true }]
               : []),
+            {
+              name: 'Members',
+              value: membersListString,
+            },
           ])
           .setThumbnail('attachment://thumbnail.png')
-          .setImage('attachment://image.png')
-          .setAuthor({ name: owner?.user.username ?? '', iconURL: context.cdn.getFileLink(owner?.user.avatarLink) }),
+          .setImage('attachment://image.png'),
       ],
       files,
     });
@@ -125,12 +133,14 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
 async function list(interaction: CommandInteraction, context: CommandContext) {
   const result = await context.backend.withAuth().query<{
     projects: {
+      id: string;
       name: string;
     }[];
   }>({
     query: gql`
       query DiscordBotFetchProjects($limit: Int!) {
         projects(limit: $limit) {
+          id
           name
         }
       }
@@ -143,7 +153,7 @@ async function list(interaction: CommandInteraction, context: CommandContext) {
   let projectsListString = '';
   for (let i = 0; i < result.data.projects.length; i++) {
     // prettier-ignore
-    projectsListString += `#${i + 1}: ${result.data.projects[i].name}\n`;
+    projectsListString += `[${result.data.projects[i].name}](https://cogs.club/projects/${result.data.projects[i].id})\n`;
   }
 
   await interaction.reply({

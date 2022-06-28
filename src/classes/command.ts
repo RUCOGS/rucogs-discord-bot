@@ -7,6 +7,7 @@ import { BackendService } from '../services/backend';
 import { defaultEmbed, DefaultEmbedType } from './utils';
 
 export interface CommandContext {
+  client: Client;
   backend: BackendService;
   cdn: CdnService;
 }
@@ -43,6 +44,7 @@ export async function configCommands(client: Client, backend: BackendService, cd
       if (command) {
         try {
           await command.run(interaction, <CommandContext>{
+            client,
             backend,
             cdn,
           });

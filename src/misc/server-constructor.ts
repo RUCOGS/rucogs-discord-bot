@@ -1,5 +1,6 @@
 import authConfig from '@config/auth.config.json';
 import serverConfig from '@config/server.config.json';
+import { configureActivityStatus } from '@src/classes/activity-status';
 import { configCommands } from '@src/classes/command';
 import { configUtils } from '@src/classes/utils';
 import { BackendService } from '@src/services/backend';
@@ -16,6 +17,7 @@ export async function startServer(debug: boolean = false) {
 
   await configCommands(client, backendService, cdnService);
   configUtils(client);
+  configureActivityStatus(client);
   await client.login(authConfig.bot.token);
 
   client.once('ready', () => {
