@@ -1,5 +1,11 @@
 import { ServerConfig } from '@src/classes/config';
 
+export const CropType = {
+  Default: 'default',
+  Circle: 'circle',
+} as const;
+export type CropType = typeof CropType[keyof typeof CropType];
+
 export class CdnService {
   constructor(public serverConfig: ServerConfig) {}
 
@@ -24,13 +30,15 @@ export class CdnService {
     options?: {
       width: number;
       height: number;
+      crop?: CropType;
     },
   ) {
     let url = '';
     if (!filePath) url = '';
     else if (this.isSelfHostedFile(filePath)) url = this.getSelfHostedFileLink(filePath);
 
-    if (options)
+    if (options) {
+      if (!options.crop) options.crop = CropType.Default;
       url =
         this.serverConfig.cdnHttpsPrefix +
         this.serverConfig.cdnDomain +
@@ -40,7 +48,9 @@ export class CdnService {
           src: url,
           width: options.width.toString(),
           height: options.height.toString(),
+          crop: options.crop,
         }).toString();
+    }
 
     return url;
   }
