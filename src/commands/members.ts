@@ -155,7 +155,12 @@ export default <Command>{
         .setDescription('Searches a member by username')
         .addStringOption((option) => option.setName('username').setDescription('Search for a username')),
     )
-    .addSubcommand((subcommand) => subcommand.setName('list').setDescription('List out all the members')),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('list')
+        .setDescription('List out all the members')
+        .addNumberOption((option) => option.setName('page').setDescription('Current page in the list')),
+    ),
   async run(interaction, context) {
     if (interaction.options.getSubcommand() === 'search') {
       search(interaction, context);

@@ -1,18 +1,28 @@
+import { gql } from '@apollo/client';
 import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
+import { UserLoginIdentityFilterInput } from '@src/generated/model.types';
 import { CdnService } from '@src/services/cdn';
+import { ProjectService } from '@src/services/project';
+import { DefaultSecurityContext, SecurityContext } from '@src/shared/security';
 import { Client, CommandInteraction, Interaction } from 'discord.js';
 import { glob } from 'glob';
 import path from 'path';
 import { BackendService } from '../services/backend';
 import { defaultEmbed, DefaultEmbedType } from './utils';
 
-export interface CommandContext {
+export interface CommandContext extends CommandContextServices {
   client: Client;
+  securityContext: SecurityContext;
+}
+
+export interface CommandContextServices {
   backend: BackendService;
+  project: ProjectService;
   cdn: CdnService;
 }
 
 export interface Command {
+  withAuth?: boolean;
   data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
   run: (interaction: CommandInteraction, context: CommandContext) => Promise<void>;
 }
@@ -37,22 +47,68 @@ export async function loadCommands() {
   return foundCommands;
 }
 
-export async function configCommands(client: Client, backend: BackendService, cdn: CdnService) {
+export async function configCommands(client: Client, context: CommandContextServices) {
   client.on('interactionCreate', async (interaction: Interaction) => {
     if (interaction.isCommand()) {
       const command = Commands.get(interaction.commandName);
       if (command) {
         try {
-          await command.run(interaction, <CommandContext>{
+          let securityContext: SecurityContext = DefaultSecurityContext;
+          if (command.withAuth) {
+            const loginIdentityResult = await context.backend.withAuth().query<{
+              userLoginIdentitys: {
+                userId: string;
+              }[];
+            }>({
+              query: gql`
+                query GetInteractionUserLoginIdentity($filter: UserLoginIdentityFilterInput!) {
+                  userLoginIdentitys(filter: $filter) {
+                    userId
+                  }
+                }
+              `,
+              variables: {
+                filter: <UserLoginIdentityFilterInput>{
+                  name: { eq: 'discord' },
+                  identityId: { eq: interaction.user.id },
+                },
+              },
+            });
+            if (loginIdentityResult.error || loginIdentityResult.data.userLoginIdentitys.length === 0)
+              throw new Error(
+                'Could not find your COGS account for authentication! Make sure you have an account at [cogs.club](https://cogs.club).',
+              );
+
+            const securityContextResult = await context.backend.withAuth().query<{
+              securityContext: SecurityContext;
+            }>({
+              query: gql`
+                query GetInteractionSecurityContext($userId: ID!) {
+                  securityContext(userId: $userId)
+                }
+              `,
+              variables: {
+                userId: loginIdentityResult.data.userLoginIdentitys[0].userId,
+              },
+            });
+            if (securityContextResult.error)
+              throw new Error('Could not generate the security context for this interaction!');
+
+            securityContext = securityContextResult.data.securityContext;
+          }
+
+          await command.run(interaction, {
             client,
-            backend,
-            cdn,
+            securityContext: securityContext,
+            ...context,
           });
         } catch (error) {
           if (error instanceof Error) {
             console.log('ERROR');
             console.log(error);
-            interaction.reply({ embeds: [defaultEmbed(DefaultEmbedType.Error).setDescription(error.message)] });
+            try {
+              interaction.reply({ embeds: [defaultEmbed(DefaultEmbedType.Error).setDescription(error.message)] });
+            } catch (error) {}
           }
         }
       }

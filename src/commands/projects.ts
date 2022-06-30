@@ -171,7 +171,12 @@ export default <Command>{
         .setDescription('Searches a project by name')
         .addStringOption((option) => option.setName('name').setDescription('Search for a name')),
     )
-    .addSubcommand((subcommand) => subcommand.setName('list').setDescription('List out all the projects')),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('list')
+        .setDescription('List out all the projects')
+        .addNumberOption((option) => option.setName('page').setDescription('Current page in the list')),
+    ),
   async run(interaction, context) {
     if (interaction.options.getSubcommand() === 'search') {
       search(interaction, context);

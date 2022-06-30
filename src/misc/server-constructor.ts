@@ -5,6 +5,7 @@ import { configCommands } from '@src/classes/command';
 import { configUtils } from '@src/classes/utils';
 import { BackendService } from '@src/services/backend';
 import { CdnService } from '@src/services/cdn';
+import { ProjectService } from '@src/services/project';
 import { Client } from 'discord.js';
 
 export async function startServer(debug: boolean = false) {
@@ -12,10 +13,15 @@ export async function startServer(debug: boolean = false) {
     intents: ['GUILDS', 'GUILD_MEMBERS', 'GUILD_MESSAGES', 'GUILD_MESSAGE_REACTIONS', 'DIRECT_MESSAGES'],
   });
 
-  const backendService = new BackendService(authConfig, serverConfig);
-  const cdnService = new CdnService(serverConfig);
+  const backend = new BackendService(authConfig, serverConfig);
+  const cdn = new CdnService(serverConfig);
+  const project = new ProjectService(client, backend);
 
-  await configCommands(client, backendService, cdnService);
+  await configCommands(client, {
+    project,
+    backend,
+    cdn,
+  });
   configUtils(client);
   configureActivityStatus(client);
   await client.login(authConfig.bot.token);

@@ -76,6 +76,7 @@ export type Mutation = {
   deleteProjectInvite?: Maybe<Scalars['Boolean']>;
   deleteProjectMember?: Maybe<Scalars['Boolean']>;
   deleteUser?: Maybe<Scalars['Boolean']>;
+  deleteUserLoginIdentity?: Maybe<Scalars['Boolean']>;
   joinOpenProject?: Maybe<Scalars['Boolean']>;
   newEBoard: Scalars['ID'];
   newEBoardTerm: Scalars['ID'];
@@ -83,13 +84,14 @@ export type Mutation = {
   newProjectInvite?: Maybe<Scalars['ID']>;
   newProjectMember?: Maybe<Scalars['ID']>;
   newUser?: Maybe<Scalars['ID']>;
-  requestProjectDiscord?: Maybe<Scalars['Boolean']>;
+  newUserLoginIdentity?: Maybe<Scalars['ID']>;
   transferProjectOwnership?: Maybe<Scalars['Boolean']>;
   updateEBoard?: Maybe<Scalars['Boolean']>;
   updateEBoardTerm?: Maybe<Scalars['Boolean']>;
   updateProject?: Maybe<Scalars['Boolean']>;
   updateProjectMember?: Maybe<Scalars['Boolean']>;
   updateUser?: Maybe<Scalars['Boolean']>;
+  updateUserLoginIdentity?: Maybe<Scalars['Boolean']>;
 };
 
 
@@ -124,6 +126,11 @@ export type MutationDeleteProjectMemberArgs = {
 
 
 export type MutationDeleteUserArgs = {
+  id: Scalars['ID'];
+};
+
+
+export type MutationDeleteUserLoginIdentityArgs = {
   id: Scalars['ID'];
 };
 
@@ -163,8 +170,8 @@ export type MutationNewUserArgs = {
 };
 
 
-export type MutationRequestProjectDiscordArgs = {
-  projectId: Scalars['ID'];
+export type MutationNewUserLoginIdentityArgs = {
+  input: NewUserLoginIdentityInput;
 };
 
 
@@ -196,6 +203,11 @@ export type MutationUpdateProjectMemberArgs = {
 
 export type MutationUpdateUserArgs = {
   input: UpdateUserInput;
+};
+
+
+export type MutationUpdateUserLoginIdentityArgs = {
+  input: UpdateUserLoginIdentityInput;
 };
 
 export type NewEBoardInput = {
@@ -230,10 +242,15 @@ export type NewProjectMemberRoleInput = {
 };
 
 export type NewUserInput = {
-  discordId?: InputMaybe<Scalars['String']>;
   displayName: Scalars['String'];
   email?: InputMaybe<Scalars['String']>;
   username: Scalars['String'];
+};
+
+export type NewUserLoginIdentityInput = {
+  identityId: Scalars['ID'];
+  name: Scalars['String'];
+  userId: Scalars['ID'];
 };
 
 export type NewUserRoleInput = {
@@ -257,7 +274,8 @@ export const Permission = {
   ReadUserPrivate: 'READ_USER_PRIVATE',
   TransferProjectOwnership: 'TRANSFER_PROJECT_OWNERSHIP',
   UpdateProject: 'UPDATE_PROJECT',
-  UpdateUser: 'UPDATE_USER'
+  UpdateUser: 'UPDATE_USER',
+  UpdateUserPrivate: 'UPDATE_USER_PRIVATE'
 } as const;
 
 export type Permission = typeof Permission[keyof typeof Permission];
@@ -269,7 +287,7 @@ export type Project = {
   completedAt?: Maybe<Scalars['Date']>;
   createdAt?: Maybe<Scalars['Date']>;
   description?: Maybe<Scalars['String']>;
-  discordSettings?: Maybe<ProjectDiscordSettings>;
+  discordConfig?: Maybe<ProjectDiscordConfig>;
   downloadLinks?: Maybe<Array<Scalars['String']>>;
   galleryImageLinks?: Maybe<Array<Scalars['String']>>;
   id: Scalars['ID'];
@@ -282,8 +300,8 @@ export type Project = {
   updatedAt?: Maybe<Scalars['Date']>;
 };
 
-export type ProjectDiscordSettings = {
-  __typename?: 'ProjectDiscordSettings';
+export type ProjectDiscordConfig = {
+  __typename?: 'ProjectDiscordConfig';
   categoryId?: Maybe<Scalars['String']>;
   createdAt?: Maybe<Scalars['Date']>;
   id: Scalars['ID'];
@@ -387,7 +405,6 @@ export type Subscription = {
   eBoardUpdated?: Maybe<Scalars['ID']>;
   projectCreated?: Maybe<Scalars['ID']>;
   projectDeleted?: Maybe<Scalars['ID']>;
-  projectDiscordRequested?: Maybe<Scalars['ID']>;
   projectInviteCreated?: Maybe<Scalars['ID']>;
   projectInviteDeleted?: Maybe<Scalars['ID']>;
   projectMemberCreated?: Maybe<Scalars['ID']>;
@@ -396,6 +413,9 @@ export type Subscription = {
   projectUpdated?: Maybe<Scalars['ID']>;
   userCreated?: Maybe<Scalars['ID']>;
   userDeleted?: Maybe<Scalars['ID']>;
+  userLoginIdentityCreated?: Maybe<Scalars['ID']>;
+  userLoginIdentityDeleted?: Maybe<Scalars['ID']>;
+  userLoginIdentityUpdated?: Maybe<Scalars['ID']>;
   userUpdated?: Maybe<Scalars['ID']>;
 };
 
@@ -440,11 +460,6 @@ export type SubscriptionProjectDeletedArgs = {
 };
 
 
-export type SubscriptionProjectDiscordRequestedArgs = {
-  filter: ProjectSubscriptionFilter;
-};
-
-
 export type SubscriptionProjectInviteCreatedArgs = {
   filter: ProjectInviteSubscriptionFilter;
 };
@@ -482,6 +497,21 @@ export type SubscriptionUserCreatedArgs = {
 
 export type SubscriptionUserDeletedArgs = {
   filter: UserSubscriptionFilter;
+};
+
+
+export type SubscriptionUserLoginIdentityCreatedArgs = {
+  filter: UserLoginIdentitySubscriptionFilter;
+};
+
+
+export type SubscriptionUserLoginIdentityDeletedArgs = {
+  filter: UserLoginIdentitySubscriptionFilter;
+};
+
+
+export type SubscriptionUserLoginIdentityUpdatedArgs = {
+  filter: UserLoginIdentitySubscriptionFilter;
 };
 
 
@@ -531,9 +561,17 @@ export type UpdateUserInput = {
   classYear?: InputMaybe<Scalars['Int']>;
   createdAt?: InputMaybe<Scalars['Date']>;
   displayName?: InputMaybe<Scalars['String']>;
+  email?: InputMaybe<Scalars['String']>;
   id: Scalars['ID'];
   roles?: InputMaybe<Array<RoleCode>>;
   socials?: InputMaybe<Array<UpdateUserSocialInput>>;
+};
+
+export type UpdateUserLoginIdentityInput = {
+  data?: InputMaybe<Scalars['Json']>;
+  id: Scalars['ID'];
+  identityId?: InputMaybe<Scalars['ID']>;
+  name?: InputMaybe<Scalars['String']>;
 };
 
 export type UpdateUserSocialInput = {
@@ -588,6 +626,10 @@ export type UserLoginIdentity = {
   userId: Scalars['ID'];
 };
 
+export type UserLoginIdentitySubscriptionFilter = {
+  id?: InputMaybe<Scalars['ID']>;
+};
+
 export type UserRole = {
   __typename?: 'UserRole';
   id: Scalars['ID'];
@@ -607,7 +649,7 @@ export type UserSocial = {
 };
 
 export type UserSubscriptionFilter = {
-  userId?: InputMaybe<Scalars['ID']>;
+  id?: InputMaybe<Scalars['ID']>;
 };
 
 
@@ -699,10 +741,11 @@ export type ResolversTypes = {
   NewProjectMemberInput: NewProjectMemberInput;
   NewProjectMemberRoleInput: NewProjectMemberRoleInput;
   NewUserInput: NewUserInput;
+  NewUserLoginIdentityInput: NewUserLoginIdentityInput;
   NewUserRoleInput: NewUserRoleInput;
   Permission: Permission;
   Project: ResolverTypeWrapper<Project>;
-  ProjectDiscordSettings: ResolverTypeWrapper<ProjectDiscordSettings>;
+  ProjectDiscordConfig: ResolverTypeWrapper<ProjectDiscordConfig>;
   ProjectInvite: ResolverTypeWrapper<ProjectInvite>;
   ProjectInviteSubscriptionFilter: ProjectInviteSubscriptionFilter;
   ProjectMember: ResolverTypeWrapper<ProjectMember>;
@@ -718,6 +761,7 @@ export type ResolversTypes = {
   UpdateProjectInput: UpdateProjectInput;
   UpdateProjectMemberInput: UpdateProjectMemberInput;
   UpdateUserInput: UpdateUserInput;
+  UpdateUserLoginIdentityInput: UpdateUserLoginIdentityInput;
   UpdateUserSocialInput: UpdateUserSocialInput;
   Upload: ResolverTypeWrapper<Scalars['Upload']>;
   UploadOperation: UploadOperation;
@@ -725,6 +769,7 @@ export type ResolversTypes = {
   UploadWithOperation: UploadWithOperation;
   User: ResolverTypeWrapper<User>;
   UserLoginIdentity: ResolverTypeWrapper<UserLoginIdentity>;
+  UserLoginIdentitySubscriptionFilter: UserLoginIdentitySubscriptionFilter;
   UserRole: ResolverTypeWrapper<UserRole>;
   UserSocial: ResolverTypeWrapper<UserSocial>;
   UserSubscriptionFilter: UserSubscriptionFilter;
@@ -750,9 +795,10 @@ export type ResolversParentTypes = {
   NewProjectMemberInput: NewProjectMemberInput;
   NewProjectMemberRoleInput: NewProjectMemberRoleInput;
   NewUserInput: NewUserInput;
+  NewUserLoginIdentityInput: NewUserLoginIdentityInput;
   NewUserRoleInput: NewUserRoleInput;
   Project: Project;
-  ProjectDiscordSettings: ProjectDiscordSettings;
+  ProjectDiscordConfig: ProjectDiscordConfig;
   ProjectInvite: ProjectInvite;
   ProjectInviteSubscriptionFilter: ProjectInviteSubscriptionFilter;
   ProjectMember: ProjectMember;
@@ -767,12 +813,14 @@ export type ResolversParentTypes = {
   UpdateProjectInput: UpdateProjectInput;
   UpdateProjectMemberInput: UpdateProjectMemberInput;
   UpdateUserInput: UpdateUserInput;
+  UpdateUserLoginIdentityInput: UpdateUserLoginIdentityInput;
   UpdateUserSocialInput: UpdateUserSocialInput;
   Upload: Scalars['Upload'];
   UploadOrSource: UploadOrSource;
   UploadWithOperation: UploadWithOperation;
   User: User;
   UserLoginIdentity: UserLoginIdentity;
+  UserLoginIdentitySubscriptionFilter: UserLoginIdentitySubscriptionFilter;
   UserRole: UserRole;
   UserSocial: UserSocial;
   UserSubscriptionFilter: UserSubscriptionFilter;
@@ -823,6 +871,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   deleteProjectInvite?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationDeleteProjectInviteArgs, 'inviteId'>>;
   deleteProjectMember?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationDeleteProjectMemberArgs, 'id'>>;
   deleteUser?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationDeleteUserArgs, 'id'>>;
+  deleteUserLoginIdentity?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationDeleteUserLoginIdentityArgs, 'id'>>;
   joinOpenProject?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationJoinOpenProjectArgs, 'projectId'>>;
   newEBoard?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationNewEBoardArgs, 'input'>>;
   newEBoardTerm?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationNewEBoardTermArgs, 'input'>>;
@@ -830,13 +879,14 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   newProjectInvite?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType, RequireFields<MutationNewProjectInviteArgs, 'input'>>;
   newProjectMember?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType, RequireFields<MutationNewProjectMemberArgs, 'input'>>;
   newUser?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType, RequireFields<MutationNewUserArgs, 'input'>>;
-  requestProjectDiscord?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationRequestProjectDiscordArgs, 'projectId'>>;
+  newUserLoginIdentity?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType, RequireFields<MutationNewUserLoginIdentityArgs, 'input'>>;
   transferProjectOwnership?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationTransferProjectOwnershipArgs, 'memberId' | 'projectId'>>;
   updateEBoard?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateEBoardArgs, 'input'>>;
   updateEBoardTerm?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateEBoardTermArgs, 'input'>>;
   updateProject?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateProjectArgs, 'input'>>;
   updateProjectMember?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateProjectMemberArgs, 'input'>>;
   updateUser?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateUserArgs, 'input'>>;
+  updateUserLoginIdentity?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateUserLoginIdentityArgs, 'input'>>;
 };
 
 export type ProjectResolvers<ContextType = any, ParentType extends ResolversParentTypes['Project'] = ResolversParentTypes['Project']> = {
@@ -846,7 +896,7 @@ export type ProjectResolvers<ContextType = any, ParentType extends ResolversPare
   completedAt?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
   createdAt?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
   description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  discordSettings?: Resolver<Maybe<ResolversTypes['ProjectDiscordSettings']>, ParentType, ContextType>;
+  discordConfig?: Resolver<Maybe<ResolversTypes['ProjectDiscordConfig']>, ParentType, ContextType>;
   downloadLinks?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   galleryImageLinks?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -860,7 +910,7 @@ export type ProjectResolvers<ContextType = any, ParentType extends ResolversPare
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type ProjectDiscordSettingsResolvers<ContextType = any, ParentType extends ResolversParentTypes['ProjectDiscordSettings'] = ResolversParentTypes['ProjectDiscordSettings']> = {
+export type ProjectDiscordConfigResolvers<ContextType = any, ParentType extends ResolversParentTypes['ProjectDiscordConfig'] = ResolversParentTypes['ProjectDiscordConfig']> = {
   categoryId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   createdAt?: Resolver<Maybe<ResolversTypes['Date']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -919,7 +969,6 @@ export type SubscriptionResolvers<ContextType = any, ParentType extends Resolver
   eBoardUpdated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "eBoardUpdated", ParentType, ContextType, RequireFields<SubscriptionEBoardUpdatedArgs, 'filter'>>;
   projectCreated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectCreated", ParentType, ContextType, RequireFields<SubscriptionProjectCreatedArgs, 'filter'>>;
   projectDeleted?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectDeleted", ParentType, ContextType, RequireFields<SubscriptionProjectDeletedArgs, 'filter'>>;
-  projectDiscordRequested?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectDiscordRequested", ParentType, ContextType, RequireFields<SubscriptionProjectDiscordRequestedArgs, 'filter'>>;
   projectInviteCreated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectInviteCreated", ParentType, ContextType, RequireFields<SubscriptionProjectInviteCreatedArgs, 'filter'>>;
   projectInviteDeleted?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectInviteDeleted", ParentType, ContextType, RequireFields<SubscriptionProjectInviteDeletedArgs, 'filter'>>;
   projectMemberCreated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectMemberCreated", ParentType, ContextType, RequireFields<SubscriptionProjectMemberCreatedArgs, 'filter'>>;
@@ -928,6 +977,9 @@ export type SubscriptionResolvers<ContextType = any, ParentType extends Resolver
   projectUpdated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "projectUpdated", ParentType, ContextType, RequireFields<SubscriptionProjectUpdatedArgs, 'filter'>>;
   userCreated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "userCreated", ParentType, ContextType, RequireFields<SubscriptionUserCreatedArgs, 'filter'>>;
   userDeleted?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "userDeleted", ParentType, ContextType, RequireFields<SubscriptionUserDeletedArgs, 'filter'>>;
+  userLoginIdentityCreated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "userLoginIdentityCreated", ParentType, ContextType, RequireFields<SubscriptionUserLoginIdentityCreatedArgs, 'filter'>>;
+  userLoginIdentityDeleted?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "userLoginIdentityDeleted", ParentType, ContextType, RequireFields<SubscriptionUserLoginIdentityDeletedArgs, 'filter'>>;
+  userLoginIdentityUpdated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "userLoginIdentityUpdated", ParentType, ContextType, RequireFields<SubscriptionUserLoginIdentityUpdatedArgs, 'filter'>>;
   userUpdated?: SubscriptionResolver<Maybe<ResolversTypes['ID']>, "userUpdated", ParentType, ContextType, RequireFields<SubscriptionUserUpdatedArgs, 'filter'>>;
 };
 
@@ -991,7 +1043,7 @@ export type Resolvers<ContextType = any> = {
   Json?: GraphQLScalarType;
   Mutation?: MutationResolvers<ContextType>;
   Project?: ProjectResolvers<ContextType>;
-  ProjectDiscordSettings?: ProjectDiscordSettingsResolvers<ContextType>;
+  ProjectDiscordConfig?: ProjectDiscordConfigResolvers<ContextType>;
   ProjectInvite?: ProjectInviteResolvers<ContextType>;
   ProjectMember?: ProjectMemberResolvers<ContextType>;
   ProjectMemberRole?: ProjectMemberRoleResolvers<ContextType>;
