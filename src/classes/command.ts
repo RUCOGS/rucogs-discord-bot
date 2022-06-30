@@ -1,11 +1,14 @@
 import { gql } from '@apollo/client';
 import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
+import { createUnsecureEntityManager } from '@src/controllers/entity-manager.controller';
 import { UserLoginIdentityFilterInput } from '@src/generated/model.types';
+import { EntityManager } from '@src/generated/typetta';
 import { CdnService } from '@src/services/cdn';
 import { ProjectService } from '@src/services/project';
 import { DefaultSecurityContext, SecurityContext } from '@src/shared/security';
 import { Client, CommandInteraction, Interaction } from 'discord.js';
 import { glob } from 'glob';
+import { Db } from 'mongodb';
 import path from 'path';
 import { BackendService } from '../services/backend';
 import { defaultEmbed, DefaultEmbedType } from './utils';
@@ -13,6 +16,7 @@ import { defaultEmbed, DefaultEmbedType } from './utils';
 export interface CommandContext extends CommandContextServices {
   client: Client;
   securityContext: SecurityContext;
+  unsecureEntityManager: EntityManager;
 }
 
 export interface CommandContextServices {
@@ -47,8 +51,9 @@ export async function loadCommands() {
   return foundCommands;
 }
 
-export async function configCommands(client: Client, context: CommandContextServices) {
+export async function configCommands(client: Client, mongoDb: Db | 'mock', context: CommandContextServices) {
   client.on('interactionCreate', async (interaction: Interaction) => {
+    const unsecureEntityManager = createUnsecureEntityManager(mongoDb);
     if (interaction.isCommand()) {
       const command = Commands.get(interaction.commandName);
       if (command) {
@@ -99,6 +104,7 @@ export async function configCommands(client: Client, context: CommandContextServ
 
           await command.run(interaction, {
             client,
+            unsecureEntityManager,
             securityContext: securityContext,
             ...context,
           });

@@ -10,7 +10,7 @@
     "clean": "rimraf dist",
     "deploy-commands": "npm run compile:tools && node dist/_tools/deploy-commands",
     "build": "npm run clean && npm run generate && npm run compile:app",
-    "generate": "rimraf src/generated && rimraf src/shared && mkdirp src/generated src/shared && copyfiles -f \"../backend/src/generated/**/*\" \"src/generated\" && copyfiles -u 4 \"../backend/src/shared/**/*\" \"src/shared\""
+    "generate": "rimraf src/generated && rimraf src/shared && rimraf src/controllers && rimraf src/middlewares && mkdirp src/generated src/shared && copyfiles -f \"../backend/src/generated/**/*\" \"src/generated\" && copyfiles -u 4 \"../backend/src/shared/**/*\" \"src/shared\" && copyfiles -u 4 \"../backend/src/controllers/**/*\" \"src/controllers\" && copyfiles -u 4 \"../backend/src/middlewares/**/*\" \"src/middlewares\""
   },
   "dependencies": {
     "@apollo/client": "^3.6.9",
