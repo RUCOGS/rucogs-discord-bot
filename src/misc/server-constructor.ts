@@ -5,28 +5,24 @@ import { configCommands } from '@src/classes/command';
 import { configUtils } from '@src/classes/utils';
 import { BackendService } from '@src/services/backend';
 import { CdnService } from '@src/services/cdn';
-import { ProjectService } from '@src/services/project';
+import { EntityManager } from '@src/services/entity-manager';
 import { Client } from 'discord.js';
-import { MongoClient } from 'mongodb';
 
-export async function startServer(debug: boolean = false, mock = '') {
+export async function startServer(debug: boolean = false) {
   const client = new Client({
     intents: ['GUILDS', 'GUILD_MEMBERS', 'GUILD_MESSAGES', 'GUILD_MESSAGE_REACTIONS', 'DIRECT_MESSAGES'],
   });
 
   const backend = new BackendService(AuthConfig, ServerConfig);
   const cdn = new CdnService(ServerConfig);
-  const project = new ProjectService(client, backend);
-
-  const mongoClient = new MongoClient(ServerConfig.mongodbUrl);
-  const mongoDb = mock ? 'mock' : mongoClient.db(ServerConfig.mongodbDbName);
-
-  await mongoClient.connect();
+  const entityManager = new EntityManager(backend);
 
   await configCommands(client, {
-    project,
     backend,
     cdn,
+    entityManager,
+    serverConfig: ServerConfig,
+    authConfig: AuthConfig,
   });
   configUtils(client);
   configureActivityStatus(client);

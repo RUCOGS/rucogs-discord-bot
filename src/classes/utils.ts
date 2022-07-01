@@ -3,6 +3,7 @@ import { Client, MessageEmbed } from 'discord.js';
 export enum DefaultEmbedType {
   Default,
   Attention,
+  Success,
   Error,
 }
 
@@ -24,6 +25,9 @@ export function defaultEmbed(type: DefaultEmbedType = DefaultEmbedType.Default) 
   switch (type) {
     case DefaultEmbedType.Attention:
       embed.setTitle('‼️ Attention');
+      break;
+    case DefaultEmbedType.Success:
+      embed.setTitle('✅ Success');
       break;
     case DefaultEmbedType.Error:
       embed.setTitle('🛑 Error');

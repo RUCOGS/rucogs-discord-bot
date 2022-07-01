@@ -1,28 +1,26 @@
-import { gql } from '@apollo/client';
+import { gql } from '@apollo/client/core';
 import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
-import { createUnsecureEntityManager } from '@src/controllers/entity-manager.controller';
-import { UserLoginIdentityFilterInput } from '@src/generated/model.types';
-import { EntityManager } from '@src/generated/typetta';
 import { CdnService } from '@src/services/cdn';
-import { ProjectService } from '@src/services/project';
+import { EntityManager } from '@src/services/entity-manager';
 import { DefaultSecurityContext, SecurityContext } from '@src/shared/security';
 import { Client, CommandInteraction, Interaction } from 'discord.js';
 import { glob } from 'glob';
-import { Db } from 'mongodb';
 import path from 'path';
 import { BackendService } from '../services/backend';
+import { AuthConfig, ServerConfig } from './config';
 import { defaultEmbed, DefaultEmbedType } from './utils';
 
-export interface CommandContext extends CommandContextServices {
+export interface CommandContext extends CommandContextInjected {
   client: Client;
   securityContext: SecurityContext;
-  unsecureEntityManager: EntityManager;
 }
 
-export interface CommandContextServices {
+export interface CommandContextInjected {
+  entityManager: EntityManager;
   backend: BackendService;
-  project: ProjectService;
   cdn: CdnService;
+  serverConfig: ServerConfig;
+  authConfig: AuthConfig;
 }
 
 export interface Command {
@@ -51,35 +49,24 @@ export async function loadCommands() {
   return foundCommands;
 }
 
-export async function configCommands(client: Client, mongoDb: Db | 'mock', context: CommandContextServices) {
+export async function configCommands(client: Client, context: CommandContextInjected) {
   client.on('interactionCreate', async (interaction: Interaction) => {
-    const unsecureEntityManager = createUnsecureEntityManager(mongoDb);
     if (interaction.isCommand()) {
       const command = Commands.get(interaction.commandName);
       if (command) {
         try {
           let securityContext: SecurityContext = DefaultSecurityContext;
           if (command.withAuth) {
-            const loginIdentityResult = await context.backend.withAuth().query<{
-              userLoginIdentitys: {
-                userId: string;
-              }[];
-            }>({
-              query: gql`
-                query GetInteractionUserLoginIdentity($filter: UserLoginIdentityFilterInput!) {
-                  userLoginIdentitys(filter: $filter) {
-                    userId
-                  }
-                }
-              `,
-              variables: {
-                filter: <UserLoginIdentityFilterInput>{
-                  name: { eq: 'discord' },
-                  identityId: { eq: interaction.user.id },
-                },
+            const loginIdentity = await context.entityManager.userLoginIdentity.findOne({
+              filter: {
+                name: { eq: 'discord' },
+                identityId: { eq: interaction.user.id },
+              },
+              projection: {
+                userId: true,
               },
             });
-            if (loginIdentityResult.error || loginIdentityResult.data.userLoginIdentitys.length === 0)
+            if (!loginIdentity)
               throw new Error(
                 'Could not find your COGS account for authentication! Make sure you have an account at [cogs.club](https://cogs.club).',
               );
@@ -93,7 +80,7 @@ export async function configCommands(client: Client, mongoDb: Db | 'mock', conte
                 }
               `,
               variables: {
-                userId: loginIdentityResult.data.userLoginIdentitys[0].userId,
+                userId: loginIdentity.userId,
               },
             });
             if (securityContextResult.error)
@@ -104,7 +91,6 @@ export async function configCommands(client: Client, mongoDb: Db | 'mock', conte
 
           await command.run(interaction, {
             client,
-            unsecureEntityManager,
             securityContext: securityContext,
             ...context,
           });

@@ -1,52 +1,39 @@
-import { gql } from '@apollo/client/core';
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Command, CommandContext } from '@src/classes/command';
 import { defaultEmbed } from '@src/classes/utils';
-import { User, UserFilterInput } from '@src/generated/model.types';
 import { CropType } from '@src/services/cdn';
 import { CommandInteraction, MessageAttachment } from 'discord.js';
 import { got } from 'got-cjs';
-import { PartialDeep } from 'type-fest';
 
 async function search(interaction: CommandInteraction, context: CommandContext) {
-  const result = await context.backend.withAuth().query<{
-    users: PartialDeep<User>[];
-  }>({
-    query: gql`
-      query DiscordBotSearchUser($filter: UserFilterInput!) {
-        users(filter: $filter) {
-          id
-          displayName
-          username
-          bio
-          avatarLink
-          bannerLink
-          createdAt
-          updatedAt
-          projectMembers {
-            project {
-              id
-              name
-            }
-          }
-          loginIdentities {
-            name
-            identityId
-          }
-        }
-      }
-    `,
-    variables: {
-      filter: <UserFilterInput>{
-        username: {
-          startsWith: interaction.options.getString('username'),
-          mode: 'INSENSITIVE',
+  const user = await context.entityManager.user.findOne({
+    projection: {
+      id: true,
+      displayName: true,
+      username: true,
+      bio: true,
+      avatarLink: true,
+      bannerLink: true,
+      createdAt: true,
+      updatedAt: true,
+      projectMembers: {
+        project: {
+          id: true,
+          name: true,
         },
+      },
+      loginIdentities: {
+        name: true,
+        identityId: true,
+      },
+    },
+    filter: {
+      username: {
+        startsWith: interaction.options.getString('username'),
+        mode: 'INSENSITIVE',
       },
     },
   });
-
-  const user = result.data.users[0];
 
   if (user !== undefined) {
     const files: MessageAttachment[] = [];
@@ -115,33 +102,25 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
 }
 
 async function list(interaction: CommandInteraction, context: CommandContext) {
-  const result = await context.backend.withAuth().query<{
-    users: {
-      displayName: string;
-      username: string;
-    }[];
-  }>({
-    query: gql`
-      query DiscordBotFetchUsers($limit: Int!) {
-        users(limit: $limit) {
-          displayName
-          username
-        }
-      }
-    `,
-    variables: {
-      limit: 10,
+  const page = interaction.options.getNumber('page') ?? 0;
+  const users = await context.entityManager.user.findAll({
+    skip: page * 10,
+    limit: 10,
+    projection: {
+      id: true,
+      displayName: true,
+      username: true,
     },
   });
 
   let usersListString = '';
-  for (let i = 0; i < result.data.users.length; i++) {
+  for (let i = 0; i < users.length; i++) {
     // prettier-ignore
-    usersListString += `[${result.data.users[i].displayName} - @${result.data.users[i].username}\n](https://cogs.club/members/${result.data.users[i].username})`;
+    usersListString += `[${users[i].displayName} - @${users[i].username}\n](https://cogs.club/members/${users[i].username})`;
   }
 
   await interaction.reply({
-    embeds: [defaultEmbed().setTitle('🧑‍🤝‍🧑 Members').setDescription(usersListString)],
+    embeds: [defaultEmbed().setTitle('🧑‍🤝‍🧑 Members').setDescription(usersListString).addField('Page', page.toString())],
   });
 }
 
@@ -153,13 +132,15 @@ export default <Command>{
       subcommand
         .setName('search')
         .setDescription('Searches a member by username')
-        .addStringOption((option) => option.setName('username').setDescription('Search for a username')),
+        .addStringOption((option) => option.setName('username').setDescription('Searched username').setRequired(true)),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('list')
         .setDescription('List out all the members')
-        .addNumberOption((option) => option.setName('page').setDescription('Current page in the list')),
+        .addNumberOption((option) =>
+          option.setName('page').setDescription('Current page in the list').setRequired(false).setMinValue(0),
+        ),
     ),
   async run(interaction, context) {
     if (interaction.options.getSubcommand() === 'search') {
