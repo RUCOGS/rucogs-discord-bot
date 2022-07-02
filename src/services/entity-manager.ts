@@ -3,13 +3,19 @@ import * as T from '@src/generated/model.types';
 import { PartialDeep } from 'type-fest';
 import { BackendService } from './backend';
 
-type TField<TType, TValue> = TType extends object ? TFields<TType, TValue> : true;
-type TFields<TType, TValue> = {
-  [K in keyof TType]?: TType[K] extends (infer TArrayType)[] ? TField<TArrayType, TValue> : TField<TType[K], TValue>;
+type ProjectionField<TType> = TType extends object ? Projection<TType> : true;
+type Projection<TType> = {
+  [K in keyof TType]?: TType[K] extends (infer TArrayType)[] ? ProjectionField<TArrayType> : ProjectionField<TType[K]>;
 };
-type Projection<TType> = TFields<TType, boolean>;
 
-class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelationsInput> {
+type OmitNever<T> = { [K in keyof T as T[K] extends never ? never : K]: T[K] };
+type ShallowProjection<TType> = Partial<
+  OmitNever<{
+    [K in keyof TType]: TType[K] extends object ? never : true;
+  }>
+>;
+
+class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelationsInput, TSubscribeFilter = never> {
   constructor(private name: string, private backend: BackendService) {}
 
   private get pascalName() {
@@ -110,7 +116,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
     const operationName = `delete${this.pascalName}s`;
     const result = await this.backend.withAuth().mutate<any>({
       mutation: gql`
-        mutation($filter: ${this.pascalName}InsertInput!) {
+        mutation($filter: ${this.pascalName}FilterInput!) {
           ${operationName}(filter: $filter)
         }
       `,
@@ -122,10 +128,46 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
     if (result.errors) throw result.errors[0];
     return result.data[operationName];
   }
+
+  private async subscribeCRUD(
+    crudName: 'Created' | 'Updated' | 'Deleted',
+    params: {
+      filter?: TSubscribeFilter | {};
+      projection: ShallowProjection<TType>;
+    },
+  ) {
+    if (!params.filter) params.filter = {};
+    const subscription = await this.backend.withAuth().subscribe<any>({
+      query: gql`
+          subscription ${this.pascalName}${crudName}($filter: ${this.pascalName}SubscriptionFilter) {
+            ${this.name}${crudName}(filter: $filter) ${this.projectionToGraphQLBody(params.projection)}
+          }
+        `,
+      variables: {
+        filter: params.filter,
+      },
+    });
+    return subscription.map((x) => {
+      if (x.errors) return undefined;
+      return x.data[this.name + crudName] as Partial<TType>;
+    });
+  }
+
+  async onCreated(params: { filter?: TSubscribeFilter; projection: ShallowProjection<TType> }) {
+    return this.subscribeCRUD('Created', params);
+  }
+
+  async onUpdated(params: { filter?: TSubscribeFilter; projection: ShallowProjection<TType> }) {
+    return this.subscribeCRUD('Updated', params);
+  }
+
+  async onDeleted(params: { filter?: TSubscribeFilter; projection: ShallowProjection<TType> }) {
+    return this.subscribeCRUD('Deleted', params);
+  }
 }
 
 export class EntityManager {
-  constructor(public backend: BackendService) {}
+  constructor(private backend: BackendService) {}
 
   public readonly eBoard = new DAO<
     T.EBoard,
@@ -133,16 +175,20 @@ export class EntityManager {
     T.EBoardInsertInput,
     T.EBoardUpdateInput,
     T.EBoardSortInput,
-    T.EBoardRelationsFilterInput
+    T.EBoardRelationsFilterInput,
+    T.EBoardSubscriptionFilter
   >('eBoard', this.backend);
+
   public readonly eBoardTerm = new DAO<
     T.EBoard,
     T.EBoardTermFilterInput,
     T.EBoardTermInsertInput,
     T.EBoardTermUpdateInput,
     T.EBoardTermSortInput,
-    T.EBoardTermRelationsFilterInput
+    T.EBoardTermRelationsFilterInput,
+    T.EBoardTermSubscriptionFilter
   >('eBoardTerm', this.backend);
+
   public readonly eBoardTermRole = new DAO<
     T.EBoardTermRole,
     T.EBoardTermRoleFilterInput,
@@ -151,13 +197,15 @@ export class EntityManager {
     T.EBoardTermRoleSortInput,
     T.EBoardTermRoleRelationsFilterInput
   >('eBoardTermRole', this.backend);
+
   public readonly project = new DAO<
     T.Project,
     T.ProjectFilterInput,
     T.ProjectInsertInput,
     T.ProjectUpdateInput,
     T.ProjectSortInput,
-    T.ProjectRelationsFilterInput
+    T.ProjectRelationsFilterInput,
+    T.ProjectSubscriptionFilter
   >('project', this.backend);
 
   public readonly projectDiscordConfig = new DAO<
@@ -175,7 +223,8 @@ export class EntityManager {
     T.ProjectInviteInsertInput,
     T.ProjectInviteUpdateInput,
     T.ProjectInviteSortInput,
-    T.ProjectInviteRelationsFilterInput
+    T.ProjectInviteRelationsFilterInput,
+    T.ProjectInviteSubscriptionFilter
   >('projectInvite', this.backend);
 
   public readonly projectMember = new DAO<
@@ -184,7 +233,8 @@ export class EntityManager {
     T.ProjectMemberInsertInput,
     T.ProjectMemberUpdateInput,
     T.ProjectMemberSortInput,
-    T.ProjectMemberRelationsFilterInput
+    T.ProjectMemberRelationsFilterInput,
+    T.ProjectMemberSubscriptionFilter
   >('projectMember', this.backend);
 
   public readonly projectMemberRole = new DAO<
@@ -202,7 +252,8 @@ export class EntityManager {
     T.UserInsertInput,
     T.UserUpdateInput,
     T.UserSortInput,
-    T.UserRelationsFilterInput
+    T.UserRelationsFilterInput,
+    T.UserSubscriptionFilter
   >('user', this.backend);
 
   public readonly userLoginIdentity = new DAO<
@@ -211,7 +262,8 @@ export class EntityManager {
     T.UserLoginIdentityInsertInput,
     T.UserLoginIdentityUpdateInput,
     T.UserLoginIdentitySortInput,
-    T.UserLoginIdentityRelationsFilterInput
+    T.UserLoginIdentityRelationsFilterInput,
+    T.UserLoginIdentitySubscriptionFilter
   >('userLoginIdentity', this.backend);
 
   public readonly userRole = new DAO<
@@ -239,7 +291,8 @@ export class EntityManager {
   //   T.FilterInput,
   //   T.InsertInput,
   //   T.UpdateInput,
-  //   T.SortInput>,
+  //   T.SortInput,
   //   T.RelationsFilterInput
+  //   T.SubscriptionFilter // Optional
   // >('', this.backend);
 }

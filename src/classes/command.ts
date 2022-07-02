@@ -2,6 +2,7 @@ import { gql } from '@apollo/client/core';
 import { SlashCommandBuilder, SlashCommandSubcommandsOnlyBuilder } from '@discordjs/builders';
 import { CdnService } from '@src/services/cdn';
 import { EntityManager } from '@src/services/entity-manager';
+import { GraphQLAPIService } from '@src/services/graphql-api';
 import { DefaultSecurityContext, SecurityContext } from '@src/shared/security';
 import { Client, CommandInteraction, Interaction } from 'discord.js';
 import { glob } from 'glob';
@@ -11,13 +12,14 @@ import { AuthConfig, ServerConfig } from './config';
 import { defaultEmbed, DefaultEmbedType } from './utils';
 
 export interface CommandContext extends CommandContextInjected {
-  client: Client;
   securityContext: SecurityContext;
 }
 
 export interface CommandContextInjected {
+  client: Client;
   entityManager: EntityManager;
   backend: BackendService;
+  graphQLAPI: GraphQLAPIService;
   cdn: CdnService;
   serverConfig: ServerConfig;
   authConfig: AuthConfig;
@@ -26,6 +28,7 @@ export interface CommandContextInjected {
 export interface Command {
   withAuth?: boolean;
   data: SlashCommandBuilder | SlashCommandSubcommandsOnlyBuilder;
+  init?: (context: CommandContextInjected) => Promise<void>;
   run: (interaction: CommandInteraction, context: CommandContext) => Promise<void>;
 }
 
@@ -49,8 +52,8 @@ export async function loadCommands() {
   return foundCommands;
 }
 
-export async function configCommands(client: Client, context: CommandContextInjected) {
-  client.on('interactionCreate', async (interaction: Interaction) => {
+export async function configCommands(context: CommandContextInjected) {
+  context.client.on('interactionCreate', async (interaction: Interaction) => {
     if (interaction.isCommand()) {
       const command = Commands.get(interaction.commandName);
       if (command) {
@@ -90,7 +93,6 @@ export async function configCommands(client: Client, context: CommandContextInje
           }
 
           await command.run(interaction, {
-            client,
             securityContext: securityContext,
             ...context,
           });
@@ -110,5 +112,6 @@ export async function configCommands(client: Client, context: CommandContextInje
   Commands.clear();
   for (const command of await loadCommands()) {
     Commands.set(command.data.name, command);
+    if (command.init) await command.init(context);
   }
 }

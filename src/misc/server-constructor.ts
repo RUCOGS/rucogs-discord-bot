@@ -6,6 +6,7 @@ import { configUtils } from '@src/classes/utils';
 import { BackendService } from '@src/services/backend';
 import { CdnService } from '@src/services/cdn';
 import { EntityManager } from '@src/services/entity-manager';
+import { GraphQLAPIService } from '@src/services/graphql-api';
 import { Client } from 'discord.js';
 
 export async function startServer(debug: boolean = false) {
@@ -16,10 +17,13 @@ export async function startServer(debug: boolean = false) {
   const backend = new BackendService(AuthConfig, ServerConfig);
   const cdn = new CdnService(ServerConfig);
   const entityManager = new EntityManager(backend);
+  const graphQLAPI = new GraphQLAPIService(backend);
 
-  await configCommands(client, {
+  await configCommands({
+    client,
     backend,
     cdn,
+    graphQLAPI,
     entityManager,
     serverConfig: ServerConfig,
     authConfig: AuthConfig,

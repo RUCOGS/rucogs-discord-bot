@@ -82,7 +82,7 @@ export class BackendService {
     this.graphQLWsClient = createClient({
       url: this.serverConfig.wssPrefix + this.serverConfig.backendDomain + this.serverConfig.graphqlRelativePath,
       connectionParams: {
-        authentication: `Basic-Root ${this.authConfig.backendRootUser.username} ${this.authConfig.backendRootUser.password}`,
+        authentication: `Basic-Root ${this.authConfig.backendRootUser.username}:${this.authConfig.backendRootUser.password}`,
       },
       webSocketImpl: WebSocket,
     });

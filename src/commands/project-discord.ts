@@ -1,10 +1,166 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Command, CommandContext } from '@src/classes/command';
+import { Command, CommandContext, CommandContextInjected } from '@src/classes/command';
 import { defaultEmbed, DefaultEmbedType } from '@src/classes/utils';
-import { Permission } from '@src/generated/graphql-endpoint.types';
+import { Permission, ProjectMember } from '@src/generated/graphql-endpoint.types';
 import { makePermsCalc } from '@src/shared/security';
-import { CommandInteraction, GuildChannel } from 'discord.js';
+import djs, {
+  CategoryChannel,
+  CommandInteraction,
+  GuildChannel,
+  OverwriteData,
+  OverwriteResolvable,
+  PermissionOverwriteOptions,
+  PermissionResolvable,
+  TextChannel,
+} from 'discord.js';
 import { ChannelTypes } from 'discord.js/typings/enums';
+import { PartialDeep } from 'type-fest';
+
+async function init(context: CommandContextInjected) {
+  configSubscriptions(context);
+}
+
+async function getProjectMemberPermissionOverwriteData(
+  projectId: string,
+  member: PartialDeep<ProjectMember> | undefined,
+  context: CommandContextInjected,
+) {
+  if (!member?.user?.loginIdentities || member.user.loginIdentities.length == 0) return undefined;
+  const discordidentity = member.user.loginIdentities.find((x) => x?.name === 'discord');
+  if (!discordidentity) return;
+
+  const allow: PermissionResolvable[] = [];
+  const deny: PermissionResolvable[] = [];
+  const options = await getProjectMemberPermissionOverwriteOptions(projectId, member, context);
+  for (const key in options) {
+    const value = (<any>options)[key];
+    if (value === true) allow.push(key as PermissionResolvable);
+    else if (value === false) deny.push(key as PermissionResolvable);
+  }
+
+  return <OverwriteData>{
+    id: await context.client.users.fetch(discordidentity.identityId!),
+    allow,
+    deny,
+  };
+}
+
+async function getProjectMemberPermissionOverwriteOptions(
+  projectId: string,
+  member: PartialDeep<ProjectMember> | undefined,
+  context: CommandContextInjected,
+) {
+  if (!member?.user?.loginIdentities || member.user.loginIdentities.length == 0) return undefined;
+
+  const memberSecurityContext = await context.graphQLAPI.securityContext(member.user.id);
+  const permsCalc = makePermsCalc().withContext(memberSecurityContext).withDomain({
+    projectId,
+  });
+
+  return <PermissionOverwriteOptions>{
+    VIEW_CHANNEL: true,
+    ...(permsCalc.hasPermission(Permission.ManageProjectDiscord) && {
+      MENTION_EVERYONE: true,
+      MANAGE_MESSAGES: true,
+    }),
+  };
+}
+
+async function configSubscriptions(context: CommandContextInjected) {
+  const onCreateOrUpdate = async (member?: Partial<ProjectMember>) => {
+    if (!member) return;
+    const projectMember = await context.entityManager.projectMember.findOne({
+      filter: {
+        id: { eq: member.id },
+      },
+      projection: {
+        project: {
+          discordConfig: {
+            categoryId: true,
+          },
+        },
+        user: {
+          loginIdentities: {
+            name: true,
+            identityId: true,
+          },
+        },
+      },
+    });
+    if (!projectMember) return;
+
+    const discordConfig = projectMember.project?.discordConfig;
+    if (!discordConfig) return;
+    const categoryChannel = await context.client.channels.fetch(discordConfig.categoryId!);
+    if (!categoryChannel || !(categoryChannel instanceof CategoryChannel)) return;
+    const discordidentity = projectMember?.user?.loginIdentities?.find((x) => x?.name === 'discord');
+    if (!discordidentity) return;
+
+    const overwrites = await getProjectMemberPermissionOverwriteOptions(
+      projectMember.project!.id!,
+      projectMember,
+      context,
+    );
+
+    if (overwrites)
+      await categoryChannel.permissionOverwrites.edit(
+        await context.client.users.fetch(discordidentity.identityId!),
+        overwrites,
+      );
+  };
+
+  (await context.entityManager.projectMember.onCreated({ projection: { id: true } })).subscribe(onCreateOrUpdate);
+  (await context.entityManager.projectMember.onUpdated({ projection: { id: true } })).subscribe(onCreateOrUpdate);
+
+  (await context.entityManager.projectMember.onDeleted({ projection: { userId: true, projectId: true } })).subscribe(
+    async (projectMember) => {
+      if (!projectMember) return;
+
+      const [identity, config] = await Promise.all([
+        context.entityManager.userLoginIdentity.findOne({
+          filter: { userId: { eq: projectMember.userId! } },
+          projection: {
+            identityId: true,
+          },
+        }),
+        context.entityManager.projectDiscordConfig.findOne({
+          filter: { projectId: { eq: projectMember.projectId } },
+          projection: {
+            categoryId: true,
+          },
+        }),
+      ]);
+
+      if (!identity || !config) return;
+      const channel = await context.client.channels.fetch(config.categoryId!);
+      if (!(channel instanceof CategoryChannel)) return;
+      const discordUser = await context.client.users.fetch(identity.identityId!);
+      await channel.permissionOverwrites.delete(discordUser);
+    },
+  );
+
+  (
+    await context.entityManager.project.onUpdated({
+      projection: {
+        id: true,
+        name: true,
+      },
+    })
+  ).subscribe(async (x) => {
+    const config = await context.entityManager.projectDiscordConfig.findOne({
+      filter: {
+        projectId: { eq: x?.id },
+      },
+      projection: {
+        categoryId: true,
+      },
+    });
+    if (!config) return;
+    const category = await context.client.channels.fetch(config.categoryId!);
+    if (!(category instanceof CategoryChannel) || category.name === x?.name!) return;
+    await category.setName(x?.name!);
+  });
+}
 
 async function create(interaction: CommandInteraction, context: CommandContext) {
   const project = await context.entityManager.project.findOne({
@@ -13,6 +169,15 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
       name: true,
       discordConfig: {
         id: true,
+      },
+      members: {
+        user: {
+          id: true,
+          loginIdentities: {
+            name: true,
+            identityId: true,
+          },
+        },
       },
     },
     filter: {
@@ -28,24 +193,41 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
   makePermsCalc()
     .withContext(context.securityContext)
     .withDomain({
-      projectId: [project.id!],
+      projectId: project.id!,
     })
-    .assertPermission(Permission.UpdateProject);
+    .assertPermission(Permission.ManageProjectDiscord);
 
   if (!interaction.guild) return;
 
+  let permissionOverwrites: OverwriteResolvable[] = [
+    {
+      id: interaction.guild.roles.everyone.id,
+      deny: [djs.Permissions.FLAGS.VIEW_CHANNEL],
+    },
+  ];
+  if (project.members) {
+    for (const member of project.members) {
+      const overwrites = await getProjectMemberPermissionOverwriteData(project.id!, member, context);
+      if (overwrites) permissionOverwrites.push(overwrites);
+    }
+  }
+
   const category = await interaction.guild.channels.create(project.name!.substring(0, 20), {
     type: ChannelTypes.GUILD_CATEGORY,
+    permissionOverwrites,
   });
-  const firstChannel = await interaction.guild.channels.create('general');
-  await firstChannel.setParent(category);
+  const firstChannel = await interaction.guild.channels.create('general', {
+    type: ChannelTypes.GUILD_TEXT,
+    parent: category,
+  });
 
   await context.entityManager.projectDiscordConfig.insertOne({
     record: {
       projectId: project.id!,
       categoryId: category.id,
-      textChannelIds: [firstChannel.id],
-      voiceChannelIds: [],
+    },
+    projection: {
+      id: true,
     },
   });
 
@@ -55,50 +237,33 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
 }
 
 async function archive(interaction: CommandInteraction, context: CommandContext) {
+  if (!(interaction.channel instanceof TextChannel)) throw new Error('This command must run in a guild text channel!');
+  const category = interaction.channel.parent;
+  if (!category) throw new Error('This command must run in a text channel under a project category!');
   const discordConfig = await context.entityManager.projectDiscordConfig.findOne({
     projection: {
       id: true,
       categoryId: true,
-      textChannelIds: true,
-      voiceChannelIds: true,
-      project: {
-        id: true,
-      },
+      projectId: true,
     },
     filter: {
-      textChannelIds: { contains: interaction.channelId },
+      categoryId: { eq: category.id },
     },
   });
 
   if (!discordConfig) throw new Error(`This channel is not part of a project!`);
+  if (!interaction.guild) return;
 
   makePermsCalc()
     .withContext(context.securityContext)
     .withDomain({
-      projectId: [discordConfig.projectId!],
+      projectId: discordConfig.projectId!,
     })
     .assertPermission(Permission.DeleteProject);
 
-  if (!interaction.guild || !discordConfig.categoryId) return;
-
-  const category = await interaction.guild.channels.cache.get(discordConfig.categoryId);
-  if (!category) return;
-
-  if (discordConfig.textChannelIds) {
-    for (const channelId of discordConfig.textChannelIds) {
-      if (!channelId) continue;
-      const channel = await interaction.guild.channels.cache.get(channelId);
-      if (channel instanceof GuildChannel) channel.setParent(context.serverConfig.archiveCategoryId);
-    }
-  }
-
-  if (discordConfig.voiceChannelIds) {
-    for (const channelId of discordConfig.voiceChannelIds) {
-      if (!channelId) continue;
-      const channel = await interaction.guild.channels.cache.get(channelId);
-      if (channel instanceof GuildChannel) channel.setParent(context.serverConfig.archiveCategoryId);
-    }
-  }
+  category.children.forEach((channel) => {
+    channel.setParent(context.serverConfig.archiveCategoryId);
+  });
 
   await category.delete();
 
@@ -110,85 +275,100 @@ async function archive(interaction: CommandInteraction, context: CommandContext)
 }
 
 async function createChannel(interaction: CommandInteraction, context: CommandContext) {
+  if (!(interaction.channel instanceof TextChannel)) throw new Error('This command must run in a guild text channel!');
+  const category = interaction.channel.parent;
+  if (!category) throw new Error('This command must run in a text channel under a project category!');
   const discordConfig = await context.entityManager.projectDiscordConfig.findOne({
     projection: {
       id: true,
       categoryId: true,
-      textChannelIds: true,
-      voiceChannelIds: true,
+      projectId: true,
     },
     filter: {
-      textChannelIds: { contains: interaction. },
+      categoryId: { eq: interaction.channel.parent.id },
     },
   });
-  // TODO NOW: Make special endpoint in backend for finding discordConfig based on textChannelId
 
   if (!discordConfig) throw new Error(`This channel is not part of a project!`);
   if (!interaction.guild) return;
 
-  const changes = {
-    textChannelIds: (discordConfig.textChannelIds?.slice() as string[]) ?? [],
-    voiceChannelIds: (discordConfig.voiceChannelIds?.slice() as string[]) ?? [],
-  };
+  makePermsCalc()
+    .withContext(context.securityContext)
+    .withDomain({
+      projectId: discordConfig.projectId!,
+    })
+    .assertPermission(Permission.ManageProjectDiscord);
 
-  const channelTypeString = interaction.options.getString('type') ?? '';
-  const channelName = interaction.options.getString('name') ?? '';
+  const channelTypeString = interaction.options.getString('type', true);
+  const channelName = interaction.options.getString('name', true);
+  const channelDescription = interaction.options.getString('description', false) ?? undefined;
   let channel;
-  let channelMentionString = '';
   switch (channelTypeString) {
     case 'GUILD_TEXT':
-      channel = await interaction.guild.channels.create(channelName, { type: channelTypeString });
-      channelMentionString = channel.toString();
-      changes.textChannelIds.push(channelName);
+      channel = await interaction.guild.channels.create(channelName, {
+        type: channelTypeString,
+        parent: category,
+        topic: channelDescription,
+      });
       break;
     case 'GUILD_VOICE':
-      channel = await interaction.guild.channels.create(channelName, { type: channelTypeString });
-      channelMentionString = channel.toString();
-      changes.voiceChannelIds.push(channelName);
+      channel = await interaction.guild.channels.create(channelName, {
+        type: channelTypeString,
+        parent: category,
+        topic: channelDescription,
+      });
       break;
     default:
       throw new Error('Unknown channel type!');
   }
 
-  await context.entityManager.projectDiscordConfig.updateAll({
-    filter: { id: { eq: discordConfig.id } },
-    changes,
-  });
-
   await interaction.reply({
-    embeds: [defaultEmbed(DefaultEmbedType.Success).setDescription(`Channel created: ${channelMentionString}`)],
+    embeds: [defaultEmbed(DefaultEmbedType.Success).setDescription(`Channel created: ${channel.toString()}`)],
   });
 }
 
 async function deleteChannel(interaction: CommandInteraction, context: CommandContext) {
+  if (!(interaction.channel instanceof TextChannel)) throw new Error('This command must run in a guild text channel!');
+  const category = interaction.channel.parent;
+  if (!category) throw new Error('This command must run in a text channel under a project category!');
   const discordConfig = await context.entityManager.projectDiscordConfig.findOne({
     projection: {
       id: true,
       categoryId: true,
-      textChannelIds: true,
+      projectId: true,
     },
     filter: {
-      textChannelIds: { contains: interaction.channelId },
+      categoryId: { eq: interaction.channel.parent.id },
     },
   });
 
   if (!discordConfig) throw new Error(`This channel is not part of a project!`);
   if (!interaction.guild) return;
 
-  const updatedTextChannels = (discordConfig.textChannelIds as string[]).slice();
-  const index = updatedTextChannels.indexOf(interaction.options.getString('name')!);
-  if (index < 0) throw new Error(``);
-  const deleteChannelId = updatedTextChannels.splice(index, 1)[0];
+  makePermsCalc()
+    .withContext(context.securityContext)
+    .withDomain({
+      projectId: discordConfig.projectId!,
+    })
+    .assertPermission(Permission.ManageProjectDiscord);
 
-  await context.entityManager.projectDiscordConfig.updateAll({
-    filter: { id: { eq: discordConfig.id! } },
-    changes: {
-      textChannelIds: updatedTextChannels,
-    },
+  let textChannelCount = 0;
+  category.children.forEach((x) => {
+    if (x.type === 'GUILD_TEXT') textChannelCount++;
   });
+  if (textChannelCount === 1)
+    throw new Error(
+      'Cannot delete the last channel of a project! In order to delete a discord precense for a project, use the `/project-discord archive` command.',
+    );
+
+  const targetChannel = interaction.options.getChannel('channel', true);
+  if (!(targetChannel instanceof GuildChannel) || !category.children.some((x) => x.id === targetChannel.id))
+    throw new Error(`Can only delete channels in this project!`);
+
+  await targetChannel.delete();
 
   await interaction.reply({
-    embeds: [defaultEmbed(DefaultEmbedType.Success).setDescription(`Channel deleted: ${deleteChannelId}`)],
+    embeds: [defaultEmbed(DefaultEmbedType.Success).setDescription(`Channel deleted: #${targetChannel.name}`)],
   });
 }
 
@@ -225,14 +405,18 @@ export default <Command>{
             .addChoices({ name: 'Text', value: 'GUILD_TEXT' }, { name: 'Voice', value: 'GUILD_VOICE' })
             .setRequired(true),
         )
-        .addStringOption((option) => option.setName('name').setDescription('Name of channel')),
+        .addStringOption((option) => option.setName('name').setDescription('Name of channel').setRequired(true))
+        .addStringOption((option) =>
+          option.setName('description').setDescription('Description of channel').setRequired(false),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('delete-channel')
         .setDescription('Deletes a text or voice channel.')
-        .addChannelOption((option) => option.setName('channel').setDescription('Channel to delete').setRequired(false)),
+        .addChannelOption((option) => option.setName('channel').setDescription('Channel to delete').setRequired(true)),
     ),
+  init,
   withAuth: true,
   async run(interaction, context) {
     if (!interaction.guild) throw new Error('This command must be ran in a guild!');
