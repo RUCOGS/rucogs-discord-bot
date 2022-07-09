@@ -1,0 +1,11 @@
+{
+	"backendRootUser": {
+		"username": "",
+		"password": ""
+	},
+	"bot": {
+		"clientId": "",
+		"guildId": "",
+		"token": ""
+	}
+}
