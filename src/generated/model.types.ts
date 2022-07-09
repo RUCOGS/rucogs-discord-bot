@@ -331,6 +331,7 @@ export type Mutation = {
   updateUserRoles?: Maybe<Scalars['Boolean']>;
   updateUserSocials?: Maybe<Scalars['Boolean']>;
   updateUsers?: Maybe<Scalars['Boolean']>;
+  verifyNetId?: Maybe<Scalars['Boolean']>;
 };
 
 
@@ -641,6 +642,11 @@ export type MutationUpdateUsersArgs = {
   filter: UserFilterInput;
 };
 
+
+export type MutationVerifyNetIdArgs = {
+  input: VerifyNetIdInput;
+};
+
 export type NewEBoardInput = {
   userId: Scalars['ID'];
 };
@@ -695,6 +701,7 @@ export const Permission = {
   CreateUser: 'CREATE_USER',
   DeleteProject: 'DELETE_PROJECT',
   DeleteUser: 'DELETE_USER',
+  JoinProject: 'JOIN_PROJECT',
   ManageEboard: 'MANAGE_EBOARD',
   ManageEboardRoles: 'MANAGE_EBOARD_ROLES',
   ManageMetadata: 'MANAGE_METADATA',
@@ -704,6 +711,7 @@ export const Permission = {
   ManageProjectMemberRoles: 'MANAGE_PROJECT_MEMBER_ROLES',
   ManageUserRoles: 'MANAGE_USER_ROLES',
   ReadUserPrivate: 'READ_USER_PRIVATE',
+  RutgersVerified: 'RUTGERS_VERIFIED',
   TransferProjectOwnership: 'TRANSFER_PROJECT_OWNERSHIP',
   UpdateProject: 'UPDATE_PROJECT',
   UpdateUser: 'UPDATE_USER',
@@ -1557,6 +1565,7 @@ export type User = {
   email?: Maybe<Scalars['String']>;
   id: Scalars['ID'];
   loginIdentities: Array<UserLoginIdentity>;
+  netId?: Maybe<Scalars['String']>;
   projectInvites: Array<ProjectInvite>;
   projectMembers: Array<ProjectMember>;
   roles: Array<UserRole>;
@@ -1575,6 +1584,7 @@ export type UserFilterInput = {
   displayName?: InputMaybe<StringFilterInput>;
   email?: InputMaybe<StringFilterInput>;
   id?: InputMaybe<IdFilterInput>;
+  netId?: InputMaybe<StringFilterInput>;
   nor_?: InputMaybe<Array<UserFilterInput>>;
   or_?: InputMaybe<Array<UserFilterInput>>;
   updatedAt?: InputMaybe<DateFilterInput>;
@@ -1597,6 +1607,7 @@ export type UserInsertInput = {
   createdAt?: InputMaybe<Scalars['Date']>;
   displayName: Scalars['String'];
   email?: InputMaybe<Scalars['String']>;
+  netId?: InputMaybe<Scalars['String']>;
   updatedAt?: InputMaybe<Scalars['Date']>;
   username: Scalars['String'];
 };
@@ -1778,6 +1789,7 @@ export type UserSortInput = {
   displayName?: InputMaybe<SortDirection>;
   email?: InputMaybe<SortDirection>;
   id?: InputMaybe<SortDirection>;
+  netId?: InputMaybe<SortDirection>;
   updatedAt?: InputMaybe<SortDirection>;
   username?: InputMaybe<SortDirection>;
 };
@@ -1794,6 +1806,12 @@ export type UserUpdateInput = {
   createdAt?: InputMaybe<Scalars['Date']>;
   displayName?: InputMaybe<Scalars['String']>;
   email?: InputMaybe<Scalars['String']>;
+  netId?: InputMaybe<Scalars['String']>;
   updatedAt?: InputMaybe<Scalars['Date']>;
   username?: InputMaybe<Scalars['String']>;
+};
+
+export type VerifyNetIdInput = {
+  netId: Scalars['String'];
+  userId?: InputMaybe<Scalars['ID']>;
 };

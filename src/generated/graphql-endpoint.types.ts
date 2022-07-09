@@ -92,6 +92,7 @@ export type Mutation = {
   updateProjectMember?: Maybe<Scalars['Boolean']>;
   updateUser?: Maybe<Scalars['Boolean']>;
   updateUserLoginIdentity?: Maybe<Scalars['Boolean']>;
+  verifyNetId?: Maybe<Scalars['Boolean']>;
 };
 
 
@@ -210,6 +211,11 @@ export type MutationUpdateUserLoginIdentityArgs = {
   input: UpdateUserLoginIdentityInput;
 };
 
+
+export type MutationVerifyNetIdArgs = {
+  input: VerifyNetIdInput;
+};
+
 export type NewEBoardInput = {
   userId: Scalars['ID'];
 };
@@ -264,6 +270,7 @@ export const Permission = {
   CreateUser: 'CREATE_USER',
   DeleteProject: 'DELETE_PROJECT',
   DeleteUser: 'DELETE_USER',
+  JoinProject: 'JOIN_PROJECT',
   ManageEboard: 'MANAGE_EBOARD',
   ManageEboardRoles: 'MANAGE_EBOARD_ROLES',
   ManageMetadata: 'MANAGE_METADATA',
@@ -273,6 +280,7 @@ export const Permission = {
   ManageProjectMemberRoles: 'MANAGE_PROJECT_MEMBER_ROLES',
   ManageUserRoles: 'MANAGE_USER_ROLES',
   ReadUserPrivate: 'READ_USER_PRIVATE',
+  RutgersVerified: 'RUTGERS_VERIFIED',
   TransferProjectOwnership: 'TRANSFER_PROJECT_OWNERSHIP',
   UpdateProject: 'UPDATE_PROJECT',
   UpdateUser: 'UPDATE_USER',
@@ -607,6 +615,7 @@ export type User = {
   email?: Maybe<Scalars['String']>;
   id: Scalars['ID'];
   loginIdentities: Array<UserLoginIdentity>;
+  netId?: Maybe<Scalars['String']>;
   projectInvites: Array<ProjectInvite>;
   projectMembers: Array<ProjectMember>;
   roles: Array<UserRole>;
@@ -649,6 +658,11 @@ export type UserSocial = {
 
 export type UserSubscriptionFilter = {
   id?: InputMaybe<Scalars['ID']>;
+};
+
+export type VerifyNetIdInput = {
+  netId: Scalars['String'];
+  userId?: InputMaybe<Scalars['ID']>;
 };
 
 
@@ -772,6 +786,7 @@ export type ResolversTypes = {
   UserRole: ResolverTypeWrapper<UserRole>;
   UserSocial: ResolverTypeWrapper<UserSocial>;
   UserSubscriptionFilter: UserSubscriptionFilter;
+  VerifyNetIdInput: VerifyNetIdInput;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -823,6 +838,7 @@ export type ResolversParentTypes = {
   UserRole: UserRole;
   UserSocial: UserSocial;
   UserSubscriptionFilter: UserSubscriptionFilter;
+  VerifyNetIdInput: VerifyNetIdInput;
 };
 
 export type CreatedAtDirectiveArgs = { };
@@ -898,6 +914,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   updateProjectMember?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateProjectMemberArgs, 'input'>>;
   updateUser?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateUserArgs, 'input'>>;
   updateUserLoginIdentity?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationUpdateUserLoginIdentityArgs, 'input'>>;
+  verifyNetId?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<MutationVerifyNetIdArgs, 'input'>>;
 };
 
 export type ProjectResolvers<ContextType = any, ParentType extends ResolversParentTypes['Project'] = ResolversParentTypes['Project']> = {
@@ -1007,6 +1024,7 @@ export type UserResolvers<ContextType = any, ParentType extends ResolversParentT
   email?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   loginIdentities?: Resolver<Array<ResolversTypes['UserLoginIdentity']>, ParentType, ContextType>;
+  netId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   projectInvites?: Resolver<Array<ResolversTypes['ProjectInvite']>, ParentType, ContextType>;
   projectMembers?: Resolver<Array<ResolversTypes['ProjectMember']>, ParentType, ContextType>;
   roles?: Resolver<Array<ResolversTypes['UserRole']>, ParentType, ContextType>;

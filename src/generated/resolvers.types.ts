@@ -214,6 +214,7 @@ export type ResolversTypes = {
   UserSortInput: types.UserSortInput;
   UserSubscriptionFilter: types.UserSubscriptionFilter;
   UserUpdateInput: types.UserUpdateInput;
+  VerifyNetIdInput: types.VerifyNetIdInput;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -354,6 +355,7 @@ export type ResolversParentTypes = {
   UserSortInput: types.UserSortInput;
   UserSubscriptionFilter: types.UserSubscriptionFilter;
   UserUpdateInput: types.UserUpdateInput;
+  VerifyNetIdInput: types.VerifyNetIdInput;
 };
 
 export type CreatedAtDirectiveArgs = { };
@@ -465,6 +467,7 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   updateUserRoles?: Resolver<types.Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<types.MutationUpdateUserRolesArgs, 'changes' | 'filter'>>;
   updateUserSocials?: Resolver<types.Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<types.MutationUpdateUserSocialsArgs, 'changes' | 'filter'>>;
   updateUsers?: Resolver<types.Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<types.MutationUpdateUsersArgs, 'changes' | 'filter'>>;
+  verifyNetId?: Resolver<types.Maybe<ResolversTypes['Boolean']>, ParentType, ContextType, RequireFields<types.MutationVerifyNetIdArgs, 'input'>>;
 };
 
 export type ProjectResolvers<ContextType = any, ParentType extends ResolversParentTypes['Project'] = ResolversParentTypes['Project']> = {
@@ -586,6 +589,7 @@ export type UserResolvers<ContextType = any, ParentType extends ResolversParentT
   email?: Resolver<types.Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   loginIdentities?: Resolver<Array<ResolversTypes['UserLoginIdentity']>, ParentType, ContextType>;
+  netId?: Resolver<types.Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   projectInvites?: Resolver<Array<ResolversTypes['ProjectInvite']>, ParentType, ContextType>;
   projectMembers?: Resolver<Array<ResolversTypes['ProjectMember']>, ParentType, ContextType>;
   roles?: Resolver<Array<ResolversTypes['UserRole']>, ParentType, ContextType>;
