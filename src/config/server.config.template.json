@@ -1,4 +1,5 @@
 {
+	"type": "debug",
 	"backendDomain": "localhost:3000",
 	"cdnDomain": "localhost:3000",
 	"cdnHttpsPrefix": "http://",
