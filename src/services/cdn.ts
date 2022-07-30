@@ -1,4 +1,4 @@
-import { ServerConfig } from '@src/classes/config';
+import { ServerConfig } from '@src/misc/config';
 
 export const CropType = {
   Default: 'default',

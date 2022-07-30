@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Command, CommandContext, CommandContextInjected } from '@src/classes/command';
-import { defaultEmbed, DefaultEmbedType } from '@src/classes/utils';
 import { Permission, ProjectMember } from '@src/generated/graphql-endpoint.types';
+import { Command, CommandContext, CommandContextInjected } from '@src/misc/command';
+import { defaultEmbed, DefaultEmbedType } from '@src/misc/utils';
 import { makePermsCalc } from '@src/shared/security';
 import djs, {
   CategoryChannel,
@@ -159,6 +159,25 @@ async function configSubscriptions(context: CommandContextInjected) {
     const category = await context.client.channels.fetch(config.categoryId!);
     if (!(category instanceof CategoryChannel) || category.name === x?.name!) return;
     await category.setName(x?.name!);
+  });
+
+  context.client.on('guildMemberAdd', async (member) => {
+    const result = await context.entityManager.userLoginIdentity.findOne({
+      filter: {
+        name: { eq: 'discord' },
+        identityId: { eq: member.user.id },
+      },
+      projection: {
+        user: {
+          projectMembers: {
+            id: true,
+          },
+        },
+      },
+    });
+    result?.user?.projectMembers?.forEach((projectMember) => {
+      onCreateOrUpdate(projectMember as Partial<ProjectMember>);
+    });
   });
 }
 

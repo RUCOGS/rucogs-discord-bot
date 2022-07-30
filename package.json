@@ -5,10 +5,11 @@
     "start": "node dist/server",
     "start:recompile": "npm run compile:app && node dist/server",
     "start:rebuild": "npm -s run build && node dist/server",
-    "compile:app": "npm run clean && tsc --project tsconfig.app.json && resolve-tspaths",
-    "compile:tools": "npm run clean && tsc --project tsconfig.tools.json && resolve-tspaths",
+    "compile:app": "npm run clean && tsc --project tsconfig.app.json && resolve-tspaths && gulp assets",
+    "compile:tools": "npm run clean && tsc --project tsconfig.tools.json && resolve-tspaths && gulp assets",
     "clean": "rimraf dist",
-    "deploy-commands": "npm run compile:tools && node dist/_tools/deploy-commands",
+    "deploy-commands:production": "npm run compile:tools && node dist/_tools/deploy-commands",
+    "deploy-commands:development": "npm run compile:tools && node dist/_tools/deploy-commands development",
     "build": "npm run clean && npm run generate && npm run compile:app",
     "generate": "rimraf src/generated && rimraf src/shared && mkdirp src/generated src/shared && copyfiles -e \"../backend/src/generated/typetta.ts\" -f \"../backend/src/generated/**/*\" \"src/generated\" && copyfiles -u 4 \"../backend/src/shared/**/*\" \"src/shared\""
   },
@@ -37,6 +38,7 @@
     "@types/isomorphic-fetch": "^0.0.36",
     "@types/node": "^18.0.0",
     "copyfiles": "^2.4.1",
+    "gulp": "^4.0.2",
     "resolve-tspaths": "^0.6.0",
     "rimraf": "^3.0.2",
     "typescript": "^4.7.4"

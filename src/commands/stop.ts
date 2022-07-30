@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Command } from '@src/classes/command';
-import { defaultEmbed } from '@src/classes/utils';
 import { Permission } from '@src/generated/graphql-endpoint.types';
+import { Command } from '@src/misc/command';
+import { defaultEmbed } from '@src/misc/utils';
 import { makePermsCalc } from '@src/shared/security';
 
 export default <Command>{

@@ -14,7 +14,7 @@ import {
 } from '@apollo/client/core';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition, Observable } from '@apollo/client/utilities';
-import { AuthConfig, ServerConfig } from '@src/classes/config';
+import { AuthConfig, ServerConfig } from '@src/misc/config';
 import { createUploadLink } from 'apollo-upload-client';
 import fetch from 'cross-fetch';
 import { Client as GraphQLWsClient, createClient } from 'graphql-ws';

@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Command, CommandContext } from '@src/classes/command';
-import { defaultEmbed } from '@src/classes/utils';
 import { Access, RoleCode } from '@src/generated/graphql-endpoint.types';
+import { Command, CommandContext } from '@src/misc/command';
+import { defaultEmbed } from '@src/misc/utils';
 import { CommandInteraction, MessageAttachment } from 'discord.js';
 import { got } from 'got-cjs';
 

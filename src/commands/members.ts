@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { Command, CommandContext } from '@src/classes/command';
-import { defaultEmbed } from '@src/classes/utils';
+import { Command, CommandContext } from '@src/misc/command';
+import { defaultEmbed } from '@src/misc/utils';
 import { CropType } from '@src/services/cdn';
 import { CommandInteraction, MessageAttachment } from 'discord.js';
 import { got } from 'got-cjs';
