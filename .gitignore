@@ -1,5 +1,6 @@
 .vscode/
 .env
-*.config.json
+*.config**
+*.secret**
 dist/
 node_modules/
