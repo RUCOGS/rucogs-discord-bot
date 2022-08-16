@@ -89,10 +89,10 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
         defaultEmbed()
           .setTitle(project.name!)
           .addFields([
-            { name: 'Pitch', value: project.pitch?.substring(0, 1024) ?? '' },
+            { name: 'Pitch', value: project.pitch?.substring(0, 1024) ?? '*Empty*' },
             ...(project.description ? [{ name: 'Description', value: project.description.substring(0, 1024) }] : []),
-            { name: 'ID', value: project.id ?? '' },
-            { name: 'Tags', value: project.tags?.join(', ') ?? '' },
+            { name: 'ID', value: project.id ?? '*Empty*' },
+            { name: 'Tags', value: project.tags?.join(', ') ?? '*Empty*' },
             { name: 'Access', value: getAccessString(project.access ?? Access.Open), inline: true },
             { name: 'Link', value: `[Click Here](https://cogs.club/projects/${project.id})`, inline: true },
             { name: 'Created At', value: new Date(project.createdAt).toLocaleString(), inline: true },

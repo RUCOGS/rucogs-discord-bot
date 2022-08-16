@@ -9,7 +9,7 @@ User=root
 ExecStart=/usr/bin/node /root/rucogs-discord-bot/dist/server.js
 Environment=NODE_ENV=production
 WorkingDirectory=/root/rucogs-discord-bot
-# Restart=on-failure
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

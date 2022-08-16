@@ -69,10 +69,10 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
     await interaction.reply({
       embeds: [
         defaultEmbed()
-          .setTitle(user.displayName ?? '' + ', @' + user.username ?? '')
+          .setTitle(user.displayName ?? '*Empty*' + ', @' + user.username ?? '*Empty*')
           .addFields([
-            { name: 'Bio', value: user.bio ?? '' },
-            { name: 'ID', value: user.id ?? '' },
+            { name: 'Bio', value: user.bio ?? '*Empty*' },
+            { name: 'ID', value: user.id ?? '*Empty*' },
             {
               name: 'Discord',
               value: `<@${user.loginIdentities?.find((x) => x?.name === 'discord')?.identityId}>`,
