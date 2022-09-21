@@ -102,7 +102,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
 }
 
 async function list(interaction: CommandInteraction, context: CommandContext) {
-  const page = interaction.options.getNumber('page') ?? 0;
+  const page = interaction.options.getNumber('page') ?? 1;
   const itemsPerPage = 10;
   const users = await context.entityManager.user.findAll({
     skip: (page - 1) * itemsPerPage,
@@ -114,7 +114,7 @@ async function list(interaction: CommandInteraction, context: CommandContext) {
     },
   });
   const usersCount = await context.entityManager.user.count();
-  const pageCount = Math.floor(usersCount / itemsPerPage);
+  const pageCount = Math.ceil(usersCount / itemsPerPage);
 
   let usersListString = '';
   for (let i = 0; i < users.length; i++) {
@@ -124,10 +124,7 @@ async function list(interaction: CommandInteraction, context: CommandContext) {
 
   await interaction.reply({
     embeds: [
-      defaultEmbed()
-        .setTitle('🧑‍🤝‍🧑 Members')
-        .setDescription(usersListString)
-        .addField('Page', `${page + 1}/${pageCount + 1}`),
+      defaultEmbed().setTitle('🧑‍🤝‍🧑 Members').setDescription(usersListString).addField('Page', `${page}/${pageCount}`),
     ],
   });
 }

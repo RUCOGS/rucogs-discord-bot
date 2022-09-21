@@ -118,7 +118,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
 }
 
 async function list(interaction: CommandInteraction, context: CommandContext) {
-  const page = interaction.options.getNumber('page') ?? 0;
+  const page = interaction.options.getNumber('page') ?? 1;
   const itemsPerPage = 10;
   const projects = await context.entityManager.project.findAll({
     skip: (page - 1) * itemsPerPage,
@@ -129,7 +129,7 @@ async function list(interaction: CommandInteraction, context: CommandContext) {
     },
   });
   const projectCount = await context.entityManager.project.count();
-  const pageCount = Math.floor(projectCount / itemsPerPage);
+  const pageCount = Math.ceil(projectCount / itemsPerPage);
 
   let projectsListString = '';
   for (let i = 0; i < projects.length; i++) {
