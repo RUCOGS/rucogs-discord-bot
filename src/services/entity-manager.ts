@@ -129,6 +129,20 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
     return result.data[operationName];
   }
 
+  async count(): Promise<number> {
+    const operationName = `${this.name}Count`;
+    const result = await this.backend.withAuth().mutate<any>({
+      mutation: gql`
+        query {
+          ${operationName}
+        }
+      `,
+      fetchPolicy: 'no-cache',
+    });
+    if (result.errors) throw result.errors[0];
+    return result.data[operationName];
+  }
+
   private async subscribeCRUD(
     crudName: 'Created' | 'Updated' | 'Deleted',
     params: {
