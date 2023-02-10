@@ -280,9 +280,9 @@ async function archive(interaction: CommandInteraction, context: CommandContext)
     })
     .assertPermission(Permission.DeleteProject);
 
-  category.children.forEach((channel) => {
-    channel.setParent(context.serverConfig.archiveCategoryId);
-  });
+  await Promise.all(
+    category.children.map(async (channel) => await channel.setParent(context.serverConfig.archiveCategoryId)),
+  );
 
   await category.delete();
 
