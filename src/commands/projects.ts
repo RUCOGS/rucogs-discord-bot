@@ -51,8 +51,6 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
   });
 
   if (project !== undefined) {
-    const owner = project.members?.find((x) => x?.roles?.some((x) => x?.roleCode === RoleCode.ProjectOwner));
-
     const files: MessageAttachment[] = [];
 
     if (project.cardImageLink) {
