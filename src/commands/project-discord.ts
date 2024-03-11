@@ -11,6 +11,7 @@ import djs, {
   OverwriteResolvable,
   PermissionOverwriteOptions,
   PermissionResolvable,
+  Permissions,
   TextChannel,
 } from 'discord.js';
 import { ChannelTypes } from 'discord.js/typings/enums';
@@ -231,19 +232,41 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
     }
   }
 
-  const category = await interaction.guild.channels.create(project.name!.substring(0, 20), {
-    type: ChannelTypes.GUILD_CATEGORY,
-    permissionOverwrites,
-  });
-  const firstChannel = await interaction.guild.channels.create('general', {
-    type: ChannelTypes.GUILD_TEXT,
-    parent: category,
-  });
+  let categoryId = interaction.options.getString('category-id') ?? '';
+  if (categoryId) {
+    if (
+      !(
+        interaction.member &&
+        typeof interaction.member.permissions != 'string' &&
+        interaction.member.permissions.has('MANAGE_CHANNELS')
+      )
+    )
+      throw new Error(
+        'Missing manage channel permissions! The category-id parameter is reserved for e-board use. Did you mean to run project-discord create without category-id?',
+      );
+    let category = undefined;
+    try {
+      category = await interaction.guild.channels.fetch(categoryId);
+    } catch {}
+    if (!(category && category instanceof CategoryChannel))
+      throw new Error(`Category of id \"${categoryId}\" doesn't exist.`);
+    category.permissionOverwrites.set(permissionOverwrites);
+  } else {
+    const category = await interaction.guild.channels.create(project.name!.substring(0, 20), {
+      type: ChannelTypes.GUILD_CATEGORY,
+      permissionOverwrites,
+    });
+    categoryId = category.id;
+    const firstChannel = await interaction.guild.channels.create('general', {
+      type: ChannelTypes.GUILD_TEXT,
+      parent: category,
+    });
+  }
 
   await context.entityManager.projectDiscordConfig.insertOne({
     record: {
       projectId: project.id!,
-      categoryId: category.id,
+      categoryId: categoryId,
     },
     projection: {
       id: true,
@@ -256,22 +279,45 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
 }
 
 async function archive(interaction: CommandInteraction, context: CommandContext) {
-  if (!(interaction.channel instanceof TextChannel)) throw new Error('This command must run in a guild text channel!');
-  const category = interaction.channel.parent;
-  if (!category) throw new Error('This command must run in a text channel under a project category!');
-  const discordConfig = await context.entityManager.projectDiscordConfig.findOne({
-    projection: {
-      id: true,
-      categoryId: true,
-      projectId: true,
-    },
-    filter: {
-      categoryId: { eq: category.id },
-    },
-  });
-
-  if (!discordConfig) throw new Error(`This channel is not part of a project!`);
   if (!interaction.guild) return;
+
+  let discordConfig;
+  if (interaction.options.getString('name')) {
+    const project = await context.entityManager.project.findOne({
+      projection: {
+        name: true,
+        discordConfig: {
+          id: true,
+          categoryId: true,
+        },
+      },
+      filter: {
+        name: {
+          startsWith: interaction.options.getString('name'),
+          mode: 'INSENSITIVE',
+        },
+      },
+    });
+    if (!project) throw new Error(`Project couldn't be found!`);
+    if (!project.discordConfig) throw new Error(`Project "${project.name}" does not have a discord prescence!`);
+    discordConfig = project.discordConfig;
+  } else {
+    if (!(interaction.channel instanceof TextChannel))
+      throw new Error('This command must run in a guild text channel!');
+    const category = interaction.channel.parent;
+    if (!category) throw new Error('This command must run in a text channel under a project category!');
+    discordConfig = await context.entityManager.projectDiscordConfig.findOne({
+      projection: {
+        id: true,
+        categoryId: true,
+        projectId: true,
+      },
+      filter: {
+        categoryId: { eq: category.id },
+      },
+    });
+    if (!discordConfig) throw new Error(`This channel is not part of a project!`);
+  }
 
   makePermsCalc()
     .withContext(context.securityContext)
@@ -280,17 +326,30 @@ async function archive(interaction: CommandInteraction, context: CommandContext)
     })
     .assertPermission(Permission.DeleteProject);
 
-  await Promise.all(
-    category.children.map(async (channel) => await channel.setParent(context.serverConfig.archiveCategoryId)),
-  );
+  let category = undefined;
+  try {
+    category = await interaction.guild.channels.fetch(discordConfig.categoryId ?? '');
+  } catch {}
 
-  await category.delete();
+  let additionalDesc = '';
+  if (category && category instanceof CategoryChannel) {
+    await Promise.all(
+      category.children.map(async (channel) => await channel.setParent(context.serverConfig.archiveCategoryId)),
+    );
+
+    await category.delete();
+    additionalDesc = `Category \"${category.name}\" deleted.`;
+  } else {
+    additionalDesc = 'No category deleted.';
+  }
 
   await context.entityManager.projectDiscordConfig.deleteAll({
     filter: { id: { eq: discordConfig.id } },
   });
 
-  interaction.reply({ embeds: [defaultEmbed(DefaultEmbedType.Success).setDescription('Discord prescence archived!')] });
+  interaction.reply({
+    embeds: [defaultEmbed(DefaultEmbedType.Success).setDescription(`Discord prescence archived!\n${additionalDesc}`)],
+  });
 }
 
 async function createChannel(interaction: CommandInteraction, context: CommandContext) {
@@ -408,10 +467,18 @@ export default <Command>{
       subcommand
         .setName('create')
         .setDescription('Creates a Discord presence for a project')
-        .addStringOption((option) => option.setName('name').setDescription('Name of the project').setRequired(true)),
+        .addStringOption((option) => option.setName('name').setDescription('Name of the project').setRequired(true))
+        .addStringOption((option) =>
+          option
+            .setName('category-id')
+            .setDescription('Id of an existing category to link the project to (Reserved for e-board use)'),
+        ),
     )
     .addSubcommand((subcommand) =>
-      subcommand.setName('archive').setDescription('Archives the project that this command is ran in.'),
+      subcommand
+        .setName('archive')
+        .setDescription('Archives the project that this command is ran in or the project specified.')
+        .addStringOption((option) => option.setName('name').setDescription('Name of the project')),
     )
     .addSubcommand((subcommand) =>
       subcommand

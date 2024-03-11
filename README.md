@@ -16,20 +16,22 @@ This bot uses slash commands. Commands that are protected are shown with a 🛡�
 - 🛡️ `/project-discord`
   - `create`
     - Creates a discord presence for a project.
+    - 🛡️ Can optionally specify an existing category to link this project to
   - `archive`
     - Archives the project that owns the channel this command is executed in
+    - Can optionally archive a project by its name
   - `create-channel`
     - Creates a channel in a project's discord.
   - `delete-channel`
     - Deletes a channel in a project's discord.
 - `/projects`
-	- `search`
-  	- Searches for a project by name, and displays the project's information.
-	- `list`
-  	- Lists out all the projects.
+  - `search`
+    - Searches for a project by name, and displays the project's information.
+  - `list`
+    - Lists out all the projects.
 - 🛡️ `/stop`
   - Stops the bot.
 
 ## Permanently Archiving Discord Chats
 
-To permanently save Discord channels, use [Tyrrrz's DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter). Download and run the latest release and then input the credentials for the  `RUCOGS Worker` bot.
+To permanently save Discord channels, use [Tyrrrz's DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter). Download and run the latest release and then input the credentials for the `RUCOGS Worker` bot.
