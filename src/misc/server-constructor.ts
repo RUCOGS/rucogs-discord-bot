@@ -5,8 +5,9 @@ import { BackendService } from '@src/services/backend';
 import { CdnService } from '@src/services/cdn';
 import { EntityManager } from '@src/services/entity-manager';
 import { GraphQLAPIService } from '@src/services/graphql-api';
-import { Client } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import { AuthConfig, ServerConfig } from './config';
+import { configSpamBlocker } from './spam-blocker';
 
 export async function startServer(debug: boolean = false) {
   const serverConfig: ServerConfig = debug
@@ -17,7 +18,14 @@ export async function startServer(debug: boolean = false) {
     : require('@src/config/auth.config.json');
 
   const client = new Client({
-    intents: ['GUILDS', 'GUILD_MEMBERS', 'GUILD_MESSAGES', 'GUILD_MESSAGE_REACTIONS', 'DIRECT_MESSAGES'],
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMembers,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildMessageReactions,
+      GatewayIntentBits.DirectMessages,
+      GatewayIntentBits.MessageContent,
+    ],
   });
 
   const backend = new BackendService(authConfig, serverConfig);
@@ -36,6 +44,7 @@ export async function startServer(debug: boolean = false) {
   });
   configUtils(client);
   configureActivityStatus(client);
+  configSpamBlocker(client);
   await client.login(authConfig.bot.token);
 
   client.once('ready', () => {

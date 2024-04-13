@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { Access, RoleCode } from '@src/generated/graphql-endpoint.types';
 import { Command, CommandContext } from '@src/misc/command';
 import { defaultEmbed } from '@src/misc/utils';
-import { CommandInteraction, MessageAttachment } from 'discord.js';
+import { AttachmentBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { got } from 'got-cjs';
 
 function getAccessString(access: Access) {
@@ -18,7 +18,7 @@ function getAccessString(access: Access) {
   }
 }
 
-async function search(interaction: CommandInteraction, context: CommandContext) {
+async function search(interaction: ChatInputCommandInteraction, context: CommandContext) {
   const project = await context.entityManager.project.findOne({
     projection: {
       id: true,
@@ -51,7 +51,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
   });
 
   if (project !== undefined) {
-    const files: MessageAttachment[] = [];
+    const files: AttachmentBuilder[] = [];
 
     if (project.cardImageLink) {
       const thumbnailResult = await got(
@@ -61,7 +61,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
         }),
         { responseType: 'buffer' },
       );
-      files.push(new MessageAttachment(thumbnailResult.body, 'thumbnail.png'));
+      files.push(new AttachmentBuilder(thumbnailResult.body, { name: 'thumbnail.png' }));
     }
 
     if (project.bannerLink) {
@@ -72,7 +72,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
         }),
         { responseType: 'buffer' },
       );
-      files.push(new MessageAttachment(imageResult.body, 'image.png'));
+      files.push(new AttachmentBuilder(imageResult.body, { name: 'image.png' }));
     }
 
     let membersListString = '';
@@ -115,7 +115,7 @@ async function search(interaction: CommandInteraction, context: CommandContext) 
   }
 }
 
-async function list(interaction: CommandInteraction, context: CommandContext) {
+async function list(interaction: ChatInputCommandInteraction, context: CommandContext) {
   const page = interaction.options.getNumber('page') ?? 1;
   const itemsPerPage = 10;
   const projects = await context.entityManager.project.findAll({
@@ -140,7 +140,7 @@ async function list(interaction: CommandInteraction, context: CommandContext) {
       defaultEmbed()
         .setTitle('🎦 Projects')
         .setDescription(projectsListString)
-        .addField('Page', `${page}/${pageCount}`),
+        .addFields({ name: 'Page', value: `${page}/${pageCount}` }),
     ],
   });
 }
@@ -164,6 +164,7 @@ export default <Command>{
         ),
     ),
   async run(interaction, context) {
+    if (!interaction.isChatInputCommand()) return;
     if (interaction.options.getSubcommand() === 'search') {
       search(interaction, context);
     } else if (interaction.options.getSubcommand() === 'list') {

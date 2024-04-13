@@ -17,7 +17,7 @@ import { getMainDefinition, Observable } from '@apollo/client/utilities';
 import { AuthConfig, ServerConfig } from '@src/misc/config';
 import { createUploadLink } from 'apollo-upload-client';
 import fetch from 'cross-fetch';
-import { Client as GraphQLWsClient, createClient } from 'graphql-ws';
+import { createClient, Client as GraphQLWsClient } from 'graphql-ws';
 import WebSocket from 'ws';
 
 export class BackendService {
@@ -116,7 +116,7 @@ export class BackendService {
   // #endregion // -- SETTINGS ----- //
 
   // #region // ----- GRAPHQL ----- //
-  watchQuery<TData, TVariables = OperationVariables>(
+  watchQuery<TData, TVariables extends OperationVariables>(
     options: WatchQueryOptions<TVariables, TData>,
   ): ObservableQuery<TData, TVariables> {
     const result = this.apollo.watchQuery<TData, TVariables>(this.configureApolloOperationOptions(options));
@@ -124,19 +124,19 @@ export class BackendService {
     return result;
   }
 
-  query<T, V = OperationVariables>(options: QueryOptions<V, T>): Promise<ApolloQueryResult<T>> {
+  query<T, V extends OperationVariables>(options: QueryOptions<V, T>): Promise<ApolloQueryResult<T>> {
     const result = this.apollo.query<T, V>(this.configureApolloOperationOptions(options));
     this.resetOpSettings();
     return result;
   }
 
-  mutate<T, V = OperationVariables>(options: MutationOptions<T, V>): Promise<FetchResult<T>> {
+  mutate<T, V extends OperationVariables>(options: MutationOptions<T, V>): Promise<FetchResult<T>> {
     const result = this.apollo.mutate<T, V>(this.configureApolloOperationOptions(options));
     this.resetOpSettings();
     return result;
   }
 
-  subscribe<T, V = OperationVariables>(options: SubscriptionOptions<V, T>): Observable<FetchResult<T>> {
+  subscribe<T, V extends OperationVariables>(options: SubscriptionOptions<V, T>): Observable<FetchResult<T>> {
     const result = this.apollo.subscribe<T, V>(this.configureApolloOperationOptions(options));
     this.resetOpSettings();
     return result;

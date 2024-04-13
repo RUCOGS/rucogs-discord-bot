@@ -1,5 +1,4 @@
-import { Client } from 'discord.js';
-import { ActivityTypes } from 'discord.js/typings/enums';
+import { ActivityType, Client } from 'discord.js';
 import random from 'random';
 
 export const ActivityStatuses = [
@@ -22,7 +21,7 @@ const StatusCycleInterval = 60_000 * 5;
 function randomizeStatus(client: Client) {
   client.user?.setActivity({
     name: ActivityStatuses[random.int(0, ActivityStatuses.length - 1)],
-    type: ActivityTypes.PLAYING,
+    type: ActivityType.Playing,
   });
 }
 

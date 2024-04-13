@@ -3,7 +3,7 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "target": "es2019",
+    "target": "es2020",
     "moduleResolution": "node",
     "sourceMap": true,
     "rootDir": "src",
@@ -13,16 +13,14 @@
     "experimentalDecorators": true,
     "strict": true,
     "noErrorTruncation": true,
+    "allowJs": true,
+    "maxNodeModuleJsDepth": 10,
     "paths": {
-      "@src/*": [ "src/*" ],
-      "@config/*": [ "src/config/*" ],
-      "@commands/*": [ "src/commands/*" ],
+      "@src/*": ["src/*"],
+      "@config/*": ["src/config/*"],
+      "@commands/*": ["src/commands/*"]
     }
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

@@ -55,7 +55,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
     projection: Projection<TType>;
   }): Promise<PartialDeep<TType>[]> {
     const operationName = `${this.name}s`;
-    const result = await this.backend.withAuth().query<any>({
+    const result = await this.backend.withAuth().query<any, any>({
       // prettier-ignore
       query: gql`
         query($filter: ${this.pascalName}FilterInput, $limit: Int, $relations: ${this.pascalName}RelationsFilterInput, $skip: Int, $sorts: [${this.pascalName}SortInput!]) {
@@ -79,7 +79,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
     // By default it will just fetch the id back
     if (!params.projection) params.projection = { id: true } as any;
     const operationName = `create${this.pascalName}`;
-    const result = await this.backend.withAuth().mutate<any>({
+    const result = await this.backend.withAuth().mutate<any, any>({
       mutation: gql`
         mutation($record: ${this.pascalName}InsertInput!) {
           ${operationName}(record: $record) ${this.projectionToGraphQLBody(params.projection)}
@@ -96,7 +96,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
 
   async updateAll(params: { filter: TFilterInput; changes: TUpdateInput }): Promise<boolean> {
     const operationName = `update${this.pascalName}s`;
-    const result = await this.backend.withAuth().mutate<any>({
+    const result = await this.backend.withAuth().mutate<any, any>({
       mutation: gql`
         mutation($filter: ${this.pascalName}InsertInput!, $changes: ${this.pascalName}UpdateInput!) {
           ${operationName}(filter: $filter, changes: $changes)
@@ -114,7 +114,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
 
   async deleteAll(params: { filter: TFilterInput }): Promise<boolean> {
     const operationName = `delete${this.pascalName}s`;
-    const result = await this.backend.withAuth().mutate<any>({
+    const result = await this.backend.withAuth().mutate<any, any>({
       mutation: gql`
         mutation($filter: ${this.pascalName}FilterInput!) {
           ${operationName}(filter: $filter)
@@ -131,7 +131,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
 
   async count(): Promise<number> {
     const operationName = `${this.name}Count`;
-    const result = await this.backend.withAuth().mutate<any>({
+    const result = await this.backend.withAuth().mutate<any, any>({
       mutation: gql`
         query {
           ${operationName}
@@ -151,7 +151,7 @@ class DAO<TType, TFilterInput, TInsertInput, TUpdateInput, TSortInput, TRelation
     },
   ) {
     if (!params.filter) params.filter = {};
-    const subscription = await this.backend.withAuth().subscribe<any>({
+    const subscription = await this.backend.withAuth().subscribe<any, any>({
       query: gql`
           subscription ${this.pascalName}${crudName}($filter: ${this.pascalName}SubscriptionFilter) {
             ${this.name}${crudName}(filter: $filter) ${this.projectionToGraphQLBody(params.projection)}

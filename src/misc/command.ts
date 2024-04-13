@@ -9,7 +9,7 @@ import { glob } from 'glob';
 import path from 'path';
 import { BackendService } from '../services/backend';
 import { AuthConfig, ServerConfig } from './config';
-import { defaultEmbed, DefaultEmbedType } from './utils';
+import { DefaultEmbedType, defaultEmbed } from './utils';
 
 export interface CommandContext extends CommandContextInjected {
   securityContext: SecurityContext;
@@ -74,9 +74,12 @@ export async function configCommands(context: CommandContextInjected) {
                 'Could not find your COGS account for authentication! Make sure you have an account at [cogs.club](https://cogs.club).',
               );
 
-            const securityContextResult = await context.backend.withAuth().query<{
-              securityContext: SecurityContext;
-            }>({
+            const securityContextResult = await context.backend.withAuth().query<
+              {
+                securityContext: SecurityContext;
+              },
+              any
+            >({
               query: gql`
                 query GetInteractionSecurityContext($userId: ID!) {
                   securityContext(userId: $userId)

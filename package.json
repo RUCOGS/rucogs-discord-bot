@@ -15,33 +15,34 @@
     "generate": "rimraf src/generated && rimraf src/shared && mkdirp src/generated src/shared && copyfiles -e \"../backend/src/generated/typetta.ts\" -f \"../backend/src/generated/**/*\" \"src/generated\" && copyfiles -u 4 \"../backend/src/shared/**/*\" \"src/shared\""
   },
   "dependencies": {
-    "@apollo/client": "^3.6.9",
-    "@discordjs/builders": "^0.15.0",
-    "@discordjs/rest": "^0.5.0",
+    "@apollo/client": "^3.7.11",
+    "@discordjs/builders": "^1.7.0",
+    "@discordjs/rest": "^2.2.0",
     "apollo-upload-client": "^17.0.0",
     "cross-fetch": "^3.1.5",
     "deep-equal": "^2.0.5",
-    "discord.js": "^13.8.1",
+    "discord.js": "^14.14.1",
     "glob": "^8.0.3",
-    "got-cjs": "^12.0.1",
+    "got-cjs": "^12.5.4",
     "graphql": "^16.5.0",
     "graphql-subscriptions": "^2.0.0",
-    "graphql-upload": "^15.0.1",
-    "graphql-ws": "^5.9.0",
+    "graphql-upload": "^16.0.2",
+    "graphql-ws": "^5.16.0",
     "random": "^3.0.6",
     "rxjs": "^7.5.5",
-    "type-fest": "^2.14.0"
+    "type-fest": "^4.15.0"
   },
   "devDependencies": {
     "@types/apollo-upload-client": "^17.0.0",
     "@types/deep-equal": "^1.0.1",
     "@types/glob": "^7.2.0",
     "@types/isomorphic-fetch": "^0.0.36",
-    "@types/node": "^18.0.0",
+    "@types/extract-files": "^8.0.0",
+    "@types/node": "^20.12.0",
     "copyfiles": "^2.4.1",
-    "gulp": "^4.0.2",
-    "resolve-tspaths": "^0.6.0",
-    "rimraf": "^3.0.2",
-    "typescript": "^4.7.4"
+    "gulp": "^5.0.0",
+    "resolve-tspaths": "^0.8.18",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.5"
   }
 }

@@ -6,9 +6,12 @@ export class GraphQLAPIService {
   constructor(private backend: BackendService) {}
 
   async securityContext(userId?: string) {
-    const result = await this.backend.query<{
-      securityContext: SecurityContext;
-    }>({
+    const result = await this.backend.query<
+      {
+        securityContext: SecurityContext;
+      },
+      any
+    >({
       query: gql`
         query GetSecurityContext($userId: ID) {
           securityContext(userId: $userId)

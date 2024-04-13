@@ -1,4 +1,5 @@
-import { Client, MessageEmbed } from 'discord.js';
+import { EmbedBuilder } from '@discordjs/builders';
+import { Client } from 'discord.js';
 
 export enum DefaultEmbedType {
   Default,
@@ -14,8 +15,8 @@ export function configUtils(newClient: Client) {
 }
 
 export function defaultEmbed(type: DefaultEmbedType = DefaultEmbedType.Default) {
-  const embed = new MessageEmbed()
-    .setColor('#B3002D')
+  const embed = new EmbedBuilder()
+    .setColor(0xb3002d)
     .setTimestamp()
     .setFooter({
       text: client.user?.username ?? '',

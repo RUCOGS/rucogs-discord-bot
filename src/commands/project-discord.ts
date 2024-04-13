@@ -1,20 +1,20 @@
 import { SlashCommandBuilder } from '@discordjs/builders';
 import { Permission, ProjectMember } from '@src/generated/graphql-endpoint.types';
 import { Command, CommandContext, CommandContextInjected } from '@src/misc/command';
-import { defaultEmbed, DefaultEmbedType } from '@src/misc/utils';
+import { DefaultEmbedType, defaultEmbed } from '@src/misc/utils';
 import { makePermsCalc } from '@src/shared/security';
-import djs, {
+import {
   CategoryChannel,
-  CommandInteraction,
+  ChannelType,
+  ChatInputCommandInteraction,
   GuildChannel,
   OverwriteData,
   OverwriteResolvable,
+  PermissionFlagsBits,
   PermissionOverwriteOptions,
   PermissionResolvable,
-  Permissions,
   TextChannel,
 } from 'discord.js';
-import { ChannelTypes } from 'discord.js/typings/enums';
 import { PartialDeep } from 'type-fest';
 
 async function init(context: CommandContextInjected) {
@@ -182,7 +182,7 @@ async function configSubscriptions(context: CommandContextInjected) {
   });
 }
 
-async function create(interaction: CommandInteraction, context: CommandContext) {
+async function create(interaction: ChatInputCommandInteraction, context: CommandContext) {
   const project = await context.entityManager.project.findOne({
     projection: {
       id: true,
@@ -222,7 +222,7 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
   let permissionOverwrites: OverwriteResolvable[] = [
     {
       id: interaction.guild.roles.everyone.id,
-      deny: [djs.Permissions.FLAGS.VIEW_CHANNEL],
+      deny: [PermissionFlagsBits.ViewChannel],
     },
   ];
   if (project.members) {
@@ -238,7 +238,7 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
       !(
         interaction.member &&
         typeof interaction.member.permissions != 'string' &&
-        interaction.member.permissions.has('MANAGE_CHANNELS')
+        interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)
       )
     )
       throw new Error(
@@ -252,13 +252,15 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
       throw new Error(`Category of id \"${categoryId}\" doesn't exist.`);
     category.permissionOverwrites.set(permissionOverwrites);
   } else {
-    const category = await interaction.guild.channels.create(project.name!.substring(0, 20), {
-      type: ChannelTypes.GUILD_CATEGORY,
+    const category = await interaction.guild.channels.create({
+      name: project.name!.substring(0, 20),
+      type: ChannelType.GuildCategory,
       permissionOverwrites,
     });
     categoryId = category.id;
-    const firstChannel = await interaction.guild.channels.create('general', {
-      type: ChannelTypes.GUILD_TEXT,
+    const firstChannel = await interaction.guild.channels.create({
+      name: 'general',
+      type: ChannelType.GuildText,
       parent: category,
     });
   }
@@ -278,7 +280,7 @@ async function create(interaction: CommandInteraction, context: CommandContext) 
   });
 }
 
-async function archive(interaction: CommandInteraction, context: CommandContext) {
+async function archive(interaction: ChatInputCommandInteraction, context: CommandContext) {
   if (!interaction.guild) return;
 
   let discordConfig;
@@ -334,7 +336,7 @@ async function archive(interaction: CommandInteraction, context: CommandContext)
   let additionalDesc = '';
   if (category && category instanceof CategoryChannel) {
     await Promise.all(
-      category.children.map(async (channel) => await channel.setParent(context.serverConfig.archiveCategoryId)),
+      category.children.cache.map(async (channel) => await channel.setParent(context.serverConfig.archiveCategoryId)),
     );
 
     await category.delete();
@@ -352,7 +354,7 @@ async function archive(interaction: CommandInteraction, context: CommandContext)
   });
 }
 
-async function createChannel(interaction: CommandInteraction, context: CommandContext) {
+async function createChannel(interaction: ChatInputCommandInteraction, context: CommandContext) {
   if (!(interaction.channel instanceof TextChannel)) throw new Error('This command must run in a guild text channel!');
   const category = interaction.channel.parent;
   if (!category) throw new Error('This command must run in a text channel under a project category!');
@@ -383,15 +385,17 @@ async function createChannel(interaction: CommandInteraction, context: CommandCo
   let channel;
   switch (channelTypeString) {
     case 'GUILD_TEXT':
-      channel = await interaction.guild.channels.create(channelName, {
-        type: channelTypeString,
+      channel = await interaction.guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildText,
         parent: category,
         topic: channelDescription,
       });
       break;
     case 'GUILD_VOICE':
-      channel = await interaction.guild.channels.create(channelName, {
-        type: channelTypeString,
+      channel = await interaction.guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildVoice,
         parent: category,
         topic: channelDescription,
       });
@@ -405,7 +409,7 @@ async function createChannel(interaction: CommandInteraction, context: CommandCo
   });
 }
 
-async function deleteChannel(interaction: CommandInteraction, context: CommandContext) {
+async function deleteChannel(interaction: ChatInputCommandInteraction, context: CommandContext) {
   if (!(interaction.channel instanceof TextChannel)) throw new Error('This command must run in a guild text channel!');
   const category = interaction.channel.parent;
   if (!category) throw new Error('This command must run in a text channel under a project category!');
@@ -431,8 +435,8 @@ async function deleteChannel(interaction: CommandInteraction, context: CommandCo
     .assertPermission(Permission.ManageProjectDiscord);
 
   let textChannelCount = 0;
-  category.children.forEach((x) => {
-    if (x.type === 'GUILD_TEXT') textChannelCount++;
+  category.children.cache.forEach((x) => {
+    if (x.type === ChannelType.GuildText) textChannelCount++;
   });
   if (textChannelCount === 1)
     throw new Error(
@@ -440,7 +444,7 @@ async function deleteChannel(interaction: CommandInteraction, context: CommandCo
     );
 
   const targetChannel = interaction.options.getChannel('channel', true);
-  if (!(targetChannel instanceof GuildChannel) || !category.children.some((x) => x.id === targetChannel.id))
+  if (!(targetChannel instanceof GuildChannel) || !category.children.cache.some((x) => x.id === targetChannel.id))
     throw new Error(`Can only delete channels in this project!`);
 
   await targetChannel.delete();
@@ -451,7 +455,7 @@ async function deleteChannel(interaction: CommandInteraction, context: CommandCo
 }
 
 const subCommands: {
-  [key: string]: (interaction: CommandInteraction, context: CommandContext) => Promise<void>;
+  [key: string]: (interaction: ChatInputCommandInteraction, context: CommandContext) => Promise<void>;
 } = {
   create: create,
   archive: archive,
@@ -505,6 +509,7 @@ export default <Command>{
   init,
   withAuth: true,
   async run(interaction, context) {
+    if (!interaction.isChatInputCommand()) return;
     if (!interaction.guild) throw new Error('This command must be ran in a guild!');
     const subCommand = subCommands[interaction.options.getSubcommand()];
     if (subCommand !== undefined) await subCommand(interaction, context);
