@@ -9,6 +9,5 @@
 	"dynamicCdnRelativePath": "/cdn/dynamic",
 	"graphqlRelativePath": "/graphql",
 	"selfHostedPrefix": "cdn://",
-	"archiveCategoryId": "",
-	"playerRoleId": ""
+	"archiveCategoryId": ""
 }
