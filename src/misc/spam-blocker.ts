@@ -43,15 +43,10 @@ const DISCORD_LINK_REGEX = new RegExp(/discord.gg\/.*/);
 export function configSpamBlocker(client: Client) {
   client.on('messageCreate', (message) => {
     let isDiscordLink = DISCORD_LINK_REGEX.test(message.content);
-    if (
-      !LINK_REGEX.test(message.content) &&
-      !isDiscordLink &&
-      (message.author.id == client.user?.id ||
-        message.member?.permissions.has(PermissionFlagsBits.Administrator) ||
-        message.content.length < TRACKED_MESSAGE_MIN_LENGTH)
-    ) {
+    if (message.author.id == client.user?.id || message.member?.permissions.has(PermissionFlagsBits.Administrator))
       return;
-    }
+    if (!LINK_REGEX.test(message.content) && !isDiscordLink && message.content.length < TRACKED_MESSAGE_MIN_LENGTH)
+      return;
     let trackedUser = trackedUserCache[message.author.id];
     if (trackedUser === undefined) {
       trackedUserCache[message.author.id] = {
@@ -111,13 +106,14 @@ function processAction(message: Message<boolean>, trackedUser: TrackedUser) {
       deleteMessageSeconds: 86400, // Delete messages from past day
       reason: 'Spamming',
     });
+    delete trackedUserCache[message.author.id];
   } else if (highestMessagesSent == MESSAGE_WARN_LIMIT) {
     message.reply({
       embeds: [
         defaultEmbed()
           .setTitle('⚠️ Stop Sending Messages')
           .setDescription(
-            `Attention <@${message.author.id}>, you are sending too many messages! If you send any more you may be banned.`,
+            `Attention <@${message.author.id}>, you are sending too many messages! If you send any more, you may be banned.`,
           ),
       ],
     });

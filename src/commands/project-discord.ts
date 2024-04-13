@@ -59,10 +59,10 @@ async function getProjectMemberPermissionOverwriteOptions(
   });
 
   return <PermissionOverwriteOptions>{
-    VIEW_CHANNEL: true,
+    ViewChannel: true,
     ...(permsCalc.hasPermission(Permission.ManageProjectDiscord) && {
-      MENTION_EVERYONE: true,
-      MANAGE_MESSAGES: true,
+      MentionEveryone: true,
+      ManageMessages: true,
     }),
   };
 }
