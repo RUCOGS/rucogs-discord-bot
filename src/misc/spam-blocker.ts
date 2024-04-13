@@ -19,7 +19,7 @@ let userMessageCache: {
 } = {};
 
 // Oldest message to track, in milliseconds.
-const TRACKED_MESSAGE_DURATION = 1000 * 60 * 60; // One hour
+const TRACKED_MESSAGE_DURATION = 1000 * 60 * 10; // 10 minutes
 // Number of times the same message can be sent in before the user gets banned.
 const MESSAGE_SPAM_LIMIT = 5;
 // Number of times the same message can be sent in before the user gets warned.
