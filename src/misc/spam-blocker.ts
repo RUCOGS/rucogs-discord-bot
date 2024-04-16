@@ -1,24 +1,32 @@
-import { Client, Message, PermissionFlagsBits, Snowflake } from 'discord.js';
+import { BaseGuildTextChannel, Client, Message, PermissionFlagsBits, Snowflake } from 'discord.js';
 import { defaultEmbed } from './utils';
 
 // A message a user sent
 interface TrackedMessage {
+  messageId: Snowflake;
+  channelId: Snowflake;
+}
+
+// A group of similar messages a user sent
+interface TrackedMessageGroups {
   content: string; // Latest message sent by user
   time: number; // Time message was created
   count: number; // Number of times message was sent
+  trackedMessages: TrackedMessage[]; // Tracked messages
 }
 
 // Number of times user sent a discord link
 interface TrackedDiscordLinks {
   time: number; // Time message was created
   count: number; // Number of times message was sent
+  trackedMessages: TrackedMessage[]; // Tracked messages
 }
 
 // Stores the last message the user sent in different channels
 interface TrackedUser {
   // Tracked messages
-  messages: TrackedMessage[];
-  discord_links?: TrackedDiscordLinks;
+  messageGroups: TrackedMessageGroups[];
+  discordLinks?: TrackedDiscordLinks;
 }
 
 let trackedUserCache: {
@@ -41,7 +49,7 @@ const LINK_REGEX = new RegExp(/(http|https):\/\/.*/);
 const DISCORD_LINK_REGEX = new RegExp(/discord.gg\/.*/);
 
 export function configSpamBlocker(client: Client) {
-  client.on('messageCreate', (message) => {
+  client.on('messageCreate', async (message) => {
     let isDiscordLink = DISCORD_LINK_REGEX.test(message.content);
     if (message.author.id == client.user?.id || message.member?.permissions.has(PermissionFlagsBits.Administrator))
       return;
@@ -50,62 +58,89 @@ export function configSpamBlocker(client: Client) {
     let trackedUser = trackedUserCache[message.author.id];
     if (trackedUser === undefined) {
       trackedUserCache[message.author.id] = {
-        messages: [],
+        messageGroups: [],
       };
       trackedUser = trackedUserCache[message.author.id];
     }
     if (isDiscordLink) {
       // Track discord links
-      if (!trackedUser.discord_links) {
-        trackedUser.discord_links = {
+      if (!trackedUser.discordLinks) {
+        trackedUser.discordLinks = {
           count: 0,
           time: Date.now(),
+          trackedMessages: [],
         };
       }
-      trackedUser.discord_links.count += 1;
+      trackedUser.discordLinks.count += 1;
+      trackedUser.discordLinks.trackedMessages.push({
+        messageId: message.id,
+        channelId: message.channelId,
+      });
     } else {
       // Track long messages/messages with links
-      let existingTrackedMessage = trackedUser.messages.find((x) => x.content == message.content);
-      if (existingTrackedMessage) {
-        existingTrackedMessage.count += 1;
-      } else {
-        if (trackedUser.messages.length == TRACKED_MESSAGE_MAX_COUNT) {
+      let existingTrackedMessage = trackedUser.messageGroups.find((x) => x.content == message.content);
+      if (!existingTrackedMessage) {
+        if (trackedUser.messageGroups.length == TRACKED_MESSAGE_MAX_COUNT) {
           // Kick out the oldest message
           let oldest_message_idx = 0;
-          for (let i = 0; i < trackedUser.messages.length; i++) {
-            if (trackedUser.messages[i].time < trackedUser.messages[oldest_message_idx].time) {
+          for (let i = 0; i < trackedUser.messageGroups.length; i++) {
+            if (trackedUser.messageGroups[i].time < trackedUser.messageGroups[oldest_message_idx].time) {
               oldest_message_idx = i;
             }
           }
-          trackedUser.messages.splice(oldest_message_idx, 1);
+          trackedUser.messageGroups.splice(oldest_message_idx, 1);
         }
         // Add new message
-        trackedUser.messages.push({
+        existingTrackedMessage = {
           content: message.content,
-          count: 1,
+          count: 0,
           time: Date.now(),
-        });
+          trackedMessages: [],
+        };
+        trackedUser.messageGroups.push(existingTrackedMessage);
       }
+      existingTrackedMessage.count += 1;
+      existingTrackedMessage.trackedMessages.push({
+        messageId: message.id,
+        channelId: message.channelId,
+      });
     }
     cleanMessageCache();
-    processAction(message, trackedUser);
+    await processAction(message, trackedUser);
   });
 }
 
 // Ban or warn client
-function processAction(message: Message<boolean>, trackedUser: TrackedUser) {
+async function processAction(message: Message<boolean>, trackedUser: TrackedUser) {
   let highestMessagesSent = 0;
-  for (let message of trackedUser.messages) {
+  for (let message of trackedUser.messageGroups) {
     if (message.count > highestMessagesSent) highestMessagesSent = message.count;
   }
-  if (trackedUser.discord_links && trackedUser.discord_links.count > highestMessagesSent) {
-    highestMessagesSent = trackedUser.discord_links.count;
+  if (trackedUser.discordLinks && trackedUser.discordLinks.count > highestMessagesSent) {
+    highestMessagesSent = trackedUser.discordLinks.count;
   }
   if (highestMessagesSent >= MESSAGE_SPAM_LIMIT) {
-    message.member?.ban({
-      deleteMessageSeconds: 86400, // Delete messages from past day
+    await message.member?.ban({
       reason: 'Spamming',
     });
+    let trackedMessagesByChannelId: { [category: Snowflake]: Snowflake[] } = {};
+    if (trackedUser.discordLinks)
+      for (let message of trackedUser.discordLinks.trackedMessages) {
+        if (!(message.channelId in trackedMessagesByChannelId)) trackedMessagesByChannelId[message.channelId] = [];
+        trackedMessagesByChannelId[message.channelId].push(message.messageId);
+      }
+    for (let trackedMessageGroup of trackedUser.messageGroups)
+      for (let message of trackedMessageGroup.trackedMessages) {
+        if (!(message.channelId in trackedMessagesByChannelId)) trackedMessagesByChannelId[message.channelId] = [];
+        trackedMessagesByChannelId[message.channelId].push(message.messageId);
+      }
+    for (let channelId in trackedMessagesByChannelId) {
+      let channel = message.guild?.channels.cache.get(channelId);
+      if (channel instanceof BaseGuildTextChannel) {
+        let messageIds = trackedMessagesByChannelId[channelId];
+        await channel.bulkDelete(messageIds);
+      }
+    }
     delete trackedUserCache[message.author.id];
   } else if (highestMessagesSent == MESSAGE_WARN_LIMIT) {
     message.reply({
@@ -126,11 +161,11 @@ function cleanMessageCache() {
   let toDeleteUserIds = [];
   for (let userId in trackedUserCache) {
     let trackedUser = trackedUserCache[userId];
-    trackedUser.messages = trackedUser.messages.filter((x) => now - x.time <= TRACKED_MESSAGE_DURATION);
-    if (trackedUser.discord_links && now - trackedUser.discord_links.time > TRACKED_MESSAGE_DURATION) {
-      trackedUser.discord_links = undefined;
+    trackedUser.messageGroups = trackedUser.messageGroups.filter((x) => now - x.time <= TRACKED_MESSAGE_DURATION);
+    if (trackedUser.discordLinks && now - trackedUser.discordLinks.time > TRACKED_MESSAGE_DURATION) {
+      trackedUser.discordLinks = undefined;
     }
-    if (trackedUser.messages.length == 0 && !trackedUser.discord_links) {
+    if (trackedUser.messageGroups.length == 0 && !trackedUser.discordLinks) {
       toDeleteUserIds.push(userId);
     }
   }
