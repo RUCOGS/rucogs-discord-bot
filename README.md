@@ -2,6 +2,8 @@
 
 Official Discord bot for RUCOGS. It features integration with the project management backend.
 
+Node Version: 20.13.1
+
 ## Commands
 
 This bot uses slash commands. Commands that are protected are shown with a 🛡️ symbol.

@@ -79,6 +79,8 @@ export class BackendService {
     });
 
     if (this.graphQLWsClient) this.graphQLWsClient.dispose();
+
+    globalThis.WebSocket = WebSocket as any;
     this.graphQLWsClient = createClient({
       url: this.serverConfig.wssPrefix + this.serverConfig.backendDomain + this.serverConfig.graphqlRelativePath,
       connectionParams: {

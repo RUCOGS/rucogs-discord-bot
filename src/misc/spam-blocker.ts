@@ -1,5 +1,7 @@
-import { BaseGuildTextChannel, Client, Message, PermissionFlagsBits, Snowflake } from 'discord.js';
+import { BaseGuildTextChannel, Client, Message, PermissionFlagsBits, Snowflake, TextBasedChannel } from 'discord.js';
 import { defaultEmbed } from './utils';
+import { ServerConfig } from './config';
+import { Server } from 'http';
 
 // A message a user sent
 interface TrackedMessage {
@@ -33,14 +35,23 @@ let trackedUserCache: {
   [userId: Snowflake]: TrackedUser;
 } = {};
 
+function instanceOfTrackedMessageGroups(obj: any): obj is TrackedMessageGroups {
+  return 'content' in obj && 'time' in obj && 'count' in obj && 'trackedMessages' in obj;
+}
+
+function instanceOfDiscordLinks(obj: any): obj is TrackedDiscordLinks {
+  return 'time' in obj && 'count' in obj && 'trackedMessages' in obj;
+}
+
 // Oldest message to track, in milliseconds.
 const TRACKED_MESSAGE_DURATION = 1000 * 60 * 60; // 1 hour
 // Number of times the same message can be sent in before the user gets banned.
-const MESSAGE_SPAM_LIMIT = 5;
+const MESSAGE_SPAM_LIMIT = 3;
 // Number of times the same message can be sent in before the user gets warned.
-const MESSAGE_WARN_LIMIT = 3;
+// Disable warning for now, to autoban manual spammer.
+const MESSAGE_WARN_LIMIT = -1;
 // Minimum size of messages that will be processed by the spam blocker.
-const TRACKED_MESSAGE_MIN_LENGTH = 24;
+const TRACKED_MESSAGE_MIN_LENGTH = 64;
 // Maximum number of messages to track from a user.
 const TRACKED_MESSAGE_MAX_COUNT = 3;
 // Regex that detects a link. Linked messages are instantly tracked.
@@ -48,7 +59,7 @@ const LINK_REGEX = new RegExp(/(http|https):\/\/.*/);
 // Regex that detects a discord link. Discord links are tracked separately
 const DISCORD_LINK_REGEX = new RegExp(/discord.gg\/.*/);
 
-export function configSpamBlocker(client: Client) {
+export function configSpamBlocker(client: Client, serverConfig: ServerConfig) {
   client.on('messageCreate', async (message) => {
     let isDiscordLink = DISCORD_LINK_REGEX.test(message.content);
     if (message.author.id == client.user?.id || message.member?.permissions.has(PermissionFlagsBits.Administrator))
@@ -106,20 +117,26 @@ export function configSpamBlocker(client: Client) {
       });
     }
     cleanMessageCache();
-    await processAction(message, trackedUser);
+    await processAction(message, trackedUser, client, serverConfig);
   });
 }
 
 // Ban or warn client
-async function processAction(message: Message<boolean>, trackedUser: TrackedUser) {
-  let highestMessagesSent = 0;
+async function processAction(
+  message: Message<boolean>,
+  trackedUser: TrackedUser,
+  client: Client,
+  serverConfig: ServerConfig,
+) {
+  let mostSpammedMessage: TrackedMessageGroups | TrackedDiscordLinks | undefined;
   for (let message of trackedUser.messageGroups) {
-    if (message.count > highestMessagesSent) highestMessagesSent = message.count;
+    if (!mostSpammedMessage || message.count > mostSpammedMessage.count) mostSpammedMessage = message;
   }
-  if (trackedUser.discordLinks && trackedUser.discordLinks.count > highestMessagesSent) {
-    highestMessagesSent = trackedUser.discordLinks.count;
+  if (!mostSpammedMessage || (trackedUser.discordLinks && trackedUser.discordLinks.count > mostSpammedMessage.count)) {
+    mostSpammedMessage = trackedUser.discordLinks;
   }
-  if (highestMessagesSent >= MESSAGE_SPAM_LIMIT) {
+  if (!mostSpammedMessage) return;
+  if (mostSpammedMessage.count >= MESSAGE_SPAM_LIMIT) {
     await message.member?.ban({
       reason: 'Spamming',
     });
@@ -142,7 +159,24 @@ async function processAction(message: Message<boolean>, trackedUser: TrackedUser
       }
     }
     delete trackedUserCache[message.author.id];
-  } else if (highestMessagesSent == MESSAGE_WARN_LIMIT) {
+    let loggingChannel = client.channels.cache.get(serverConfig.loggingChannelId) as TextBasedChannel;
+    let reason = '';
+    let fields = [];
+    if (instanceOfTrackedMessageGroups(mostSpammedMessage)) {
+      fields.push({ name: 'Reason', value: 'Spammed text' });
+      fields.push({ name: 'Text', value: mostSpammedMessage.content });
+    } else {
+      fields.push({ name: 'Reason', value: 'Discord links' });
+    }
+    await loggingChannel.send({
+      embeds: [
+        defaultEmbed()
+          .setTitle('🔨 User Banned')
+          .setDescription(`<@${message.author.id}> has been banned for spamming.`)
+          .setFields(fields),
+      ],
+    });
+  } else if (mostSpammedMessage.count == MESSAGE_WARN_LIMIT) {
     message.reply({
       embeds: [
         defaultEmbed()

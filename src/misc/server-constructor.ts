@@ -44,7 +44,7 @@ export async function startServer(debug: boolean = false) {
   });
   configUtils(client);
   configureActivityStatus(client);
-  configSpamBlocker(client);
+  configSpamBlocker(client, serverConfig);
   await client.login(authConfig.bot.token);
 
   client.once('ready', () => {
