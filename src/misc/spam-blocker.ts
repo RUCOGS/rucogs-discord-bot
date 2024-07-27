@@ -1,10 +1,19 @@
-import { BaseGuildTextChannel, Client, Message, PermissionFlagsBits, Snowflake, TextBasedChannel } from 'discord.js';
+import {
+  AttachmentBuilder,
+  BaseGuildTextChannel,
+  Client,
+  Message,
+  PermissionFlagsBits,
+  Snowflake,
+  TextBasedChannel,
+} from 'discord.js';
 import { defaultEmbed } from './utils';
 import { ServerConfig } from './config';
 import { Server } from 'http';
 
 // A message a user sent
 interface TrackedMessage {
+  content?: string;
   messageId: Snowflake;
   channelId: Snowflake;
 }
@@ -86,6 +95,7 @@ export function configSpamBlocker(client: Client, serverConfig: ServerConfig) {
       trackedUser.discordLinks.trackedMessages.push({
         messageId: message.id,
         channelId: message.channelId,
+        content: message.content,
       });
     } else {
       // Track long messages/messages with links
@@ -158,6 +168,7 @@ async function processAction(
         await channel.bulkDelete(messageIds);
       }
     }
+    const bannedTrackedUser = trackedUserCache[message.author.id];
     delete trackedUserCache[message.author.id];
     let loggingChannel = client.channels.cache.get(serverConfig.loggingChannelId) as TextBasedChannel;
     let reason = '';
@@ -174,6 +185,14 @@ async function processAction(
           .setTitle('🔨 User Banned')
           .setDescription(`<@${message.author.id}> has been banned for spamming.`)
           .setFields(fields),
+      ],
+    });
+    await loggingChannel.send({
+      files: [
+        new AttachmentBuilder(Buffer.from(JSON.stringify(bannedTrackedUser, null, 2)), {
+          name: 'details.txt',
+          description: 'Details on why the user was banned.',
+        }),
       ],
     });
   } else if (mostSpammedMessage.count == MESSAGE_WARN_LIMIT) {
