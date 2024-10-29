@@ -44,14 +44,9 @@ export const RoleData: {
       RoleCode.CommunityManager,
       RoleCode.Webmaster,
       RoleCode.Treasurer,
-      RoleCode.SocialmediaManager,
+      RoleCode.Outreach,
       RoleCode.BotDeveloper,
       RoleCode.ClubGraphicArtist,
-      RoleCode.CommunicationsSpecialist,
-      RoleCode.PromotionsManager,
-      RoleCode.MerchandiseManager,
-      RoleCode.PortfolioManager,
-      RoleCode.PreProfessionalManager,
 
       // Project Roles
       RoleCode.ProjectOwner,
@@ -117,9 +112,9 @@ export const RoleData: {
     type: [RoleType.EBoard],
     name: '🧑‍🤝‍🧑 Community Manager',
   },
-  [RoleCode.SocialmediaManager]: {
+  [RoleCode.Outreach]: {
     type: [RoleType.EBoard],
-    name: '📤 Social Media Manager',
+    name: '📤 Outreach',
   },
   [RoleCode.BotDeveloper]: {
     type: [RoleType.EBoard],
@@ -133,27 +128,6 @@ export const RoleData: {
     type: [RoleType.EBoard],
     name: '🕸️ Webmaster',
   },
-  [RoleCode.CommunicationsSpecialist]: {
-    type: [RoleType.EBoard],
-    name: '🗣️ Communications Specialist',
-  },
-  [RoleCode.PromotionsManager]: {
-    type: [RoleType.EBoard],
-    name: '🪧 Promotions Manager',
-  },
-  [RoleCode.MerchandiseManager]: {
-    type: [RoleType.EBoard],
-    name: '👕 Merch Manager',
-  },
-  [RoleCode.PortfolioManager]: {
-    type: [RoleType.EBoard],
-    name: '📂 Portfolio Manager'
-  },
-  [RoleCode.PreProfessionalManager]: {
-    type: [RoleType.EBoard],
-    name: '🤵 Pre-Professional Manager'
-  },
-  
   // #endregion // -- EBOARD ROLES ----- //
 
   // #region // ----- PROJECT MEMBER ROLES ----- //
